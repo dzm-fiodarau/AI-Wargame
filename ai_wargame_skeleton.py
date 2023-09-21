@@ -153,11 +153,18 @@ class Coord:
                 yield Coord(row, col)
 
     def iter_adjacent(self) -> Iterable[Coord]:
-        """Iterates over adjacent Coords."""
+        """Iterates over the 4adjacent Coords."""
         yield Coord(self.row - 1, self.col)
         yield Coord(self.row, self.col - 1)
         yield Coord(self.row + 1, self.col)
         yield Coord(self.row, self.col + 1)
+
+    def iter__diagonal(self) -> Iterable[Coord]:
+        """Iterates over the 4 diagonal Coords."""
+        yield Coord(self.row - 1, self.col - 1)
+        yield Coord(self.row + 1, self.col - 1)
+        yield Coord(self.row - 1, self.col + 1)
+        yield Coord(self.row + 1, self.col + 1)
 
     @classmethod
     def from_string(cls, s: str) -> Coord | None:
@@ -428,6 +435,9 @@ class Game:
                     print("Self destruct Action")
                     # Self destroy Code here, self destruction should AOE everything around itself for 2 hp
                     self.mod_health(coords.src, -9)
+                    affected_coords = list(coords.src.iter_adjacent()) + list(coords.src.iter__diagonal())
+                    for coord in affected_coords:
+                        self.mod_health(coord, -2)
 
                 elif self.get(coords.src).player == self.get(coords.dst).player:
                     print("Healing Ally Action")
@@ -441,9 +451,9 @@ class Game:
                     print("Attacking Enemy Action")
                     print(self.get(coords.src).health)
                     print(self.get(coords.src).damage_amount(self.get(coords.dst)))
+                    dmg = -self.get(coords.dst).damage_amount(self.get(coords.src))
                     self.mod_health(coords.dst, -self.get(coords.src).damage_amount(self.get(coords.dst)))
-                    #self.get(coords.dst).mod_health(coords.src, -self.get(coords.dst).damage_amount(self.get(coords.src)))
-                    print(self.get(coords.src).health)
+                    self.mod_health(coords.src, dmg)
                     # Attack and enemy code here
                     # if dead = set coord src to None
                     #self.set(coords.src, None)
