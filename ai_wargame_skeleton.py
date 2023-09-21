@@ -339,42 +339,86 @@ class Game:
     def is_valid_move(self, coords: CoordPair) -> bool:
         """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
         print(coords)
-        print("in Valid Move")
+        print("inside is_valid_move() function")
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
-            print("Check Valid Move 1")
+            print("Coords outside board dimensions.")
             return False
-        unit = self.get(coords.src)
-
-        # Check if the source and destination coordinates are adjacent
-        adjacent_coords = list(coords.src.iter_adjacent())
-        print(adjacent_coords)
-        if coords.dst not in adjacent_coords:
-            return False
-
-        if unit is None or unit.player != self.next_player:
-            print("Check Valid Move 2")
-            return False
-        unit = self.get(coords.dst)
 
         if coords.src == coords.dst:
             print("Self destruct Valid")
             return True
 
-        if (
-            unit is not None
-            and self.get(coords.src).player == self.get(coords.dst).player
-        ):
-            print("Healing Ally Valid")
-            return True
+        # Check if the source and destination coordinates are adjacent
+        adjacent_coords = list(coords.src.iter_adjacent())
+        #print(adjacent_coords)
+        if coords.dst not in adjacent_coords:
+            print("Src and dst coords are not adjacent.")
+            return False
+
+        # Seems unnecessary
+        # if unit is None or unit.player != self.next_player:
+        #     print("No unit to move or wrong player's turn")
+        #     return False
+        src_unit = self.get(coords.src)
+        dst_unit = self.get(coords.dst)
 
         if (
-            unit is not None
+            dst_unit is not None
+            and self.get(coords.src).player == self.get(coords.dst).player
+        ):
+            if(dst_unit.health==9):
+                print(f"{dst_unit.type.name} is at maximum health.")
+                return False
+            elif(src_unit.repair_table[src_unit.type.value][dst_unit.type.value]<=0):
+                print(f"{src_unit.type.name} cannot heal {dst_unit.type.name}.")
+                return False
+            else:
+                print("Healing Valid")
+                return True
+
+        if (
+            dst_unit is not None
             and self.get(coords.src).player != self.get(coords.dst).player
         ):
             print("Attacking Enemy Valid")
             return True
+        
+        src_is_ai_firewall_program = (src_unit.type.value == 0 
+           or src_unit.type.value == 3
+           or src_unit.type.value == 4)
 
-        return unit is None
+        # Need to verify that src_unit is not engaged in combat for relevant units
+        if src_is_ai_firewall_program:
+            for adj in adjacent_coords:
+                adjacent_unit = self.get(adj)
+                if(adjacent_unit is not None
+                   and adjacent_unit.player != self.next_player):
+                    print(f"{src_unit.type.name} is already engaged in combat. Cannot move.")
+                    return False
+
+        if dst_unit is None:
+            if src_is_ai_firewall_program:
+                if src_unit.player.value==0:
+                    if (coords.dst.row>coords.src.row
+                        or coords.dst.col>coords.src.col):
+                        print(f"{src_unit.player.name}'s {src_unit.type.name} cannot move that way.")
+                        return False
+                    else:
+                        print("Move Valid")
+                        return True
+                else:
+                    if (coords.dst.row<coords.src.row
+                        or coords.dst.col<coords.src.col):
+                        print(f"{src_unit.player.name}'s {src_unit.type.name} cannot move that way.")
+                        return False
+                    else:
+                        print("Move Valid")
+                        return True
+            else:
+                print("Move Valid")
+                return True
+        else:
+            print("Something is wrong")
 
     def perform_move(self, coords: CoordPair) -> Tuple[bool, str]:
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
@@ -643,7 +687,7 @@ class GameGUI:
         self.game_label.grid(
             row=0, column=3, columnspan=2, pady=10
         )  # Place the label at the top
-        self.turn_label = tk.Label(root, text="Turn: 0 (Attacker)")
+        self.turn_label = tk.Label(root, text="Turn: 0\n(Attacker's Turn)")
         self.turn_label.grid(
             row=0, column=6, columnspan=1
         )  # Place the label at the top
@@ -751,10 +795,6 @@ class GameGUI:
         # Implement AI vs AI logic here
         pass
 
-    def update_buttons(self):
-        # Update the grid buttons as before
-        pass
-
     def on_button_click(self, row, col):
         # Handle button clicks as before
         pass
@@ -779,11 +819,11 @@ class GameGUI:
         unit = self.game.get(coord)
 
         if unit is not None and unit.player == self.game.next_player:
-            print("Moving 1")
-            if self.selected_coord is None:
+            print(f"{unit.player.name} selected {unit.type.name} at {coord}")
+            if self.selected_coord is None: # Selecting unit
                 self.selected_coord = coord
                 self.buttons[row][col].config(bg="yellow")
-            else:
+            else: # Healing or self-destruct unit
                 print("Moving 2")
                 move = CoordPair(self.selected_coord, coord)
                 success, result = self.game.human_turn(move)
@@ -799,7 +839,7 @@ class GameGUI:
                     messagebox.showerror(
                         "Invalid Move", "Invalid move. Try again. move 1"
                     )
-        elif self.selected_coord is not None:
+        elif self.selected_coord is not None: # Attacking enemy unit or moving
             print("Moving 3")
             move = CoordPair(self.selected_coord, coord)
             success, result = self.game.human_turn(move)
@@ -814,14 +854,14 @@ class GameGUI:
             else:
                 messagebox.showerror("Invalid Move", "Invalid move. Try again. move 2")
         else:
-            messagebox.showerror("Invalid Move", "Invalid move. Try again. 3")
+            messagebox.showerror("Invalid Move", "Please select a Unit.")
 
     def update_turn_label(self):
         # Update the turn label with the current turn count and player's turn
         player_turn = (
-            "Attacker" if self.game.next_player == Player.Attacker else "Defender"
+            "Attacker's Turn" if self.game.next_player == Player.Attacker else "Defender's Turn"
         )
-        self.turn_label.config(text=f"Turn: {self.turn_count} ({player_turn})")
+        self.turn_label.config(text=f"Turn: {self.turn_count}\n({player_turn})")
 
 
 ##############################################################################################################
@@ -865,8 +905,6 @@ def main():
         options.broker = args.broker
 
     # create a new game
-    game = Game(options=options)
-
     root = tk.Tk()
     root.title("Game GUI")
     game = Game(options=options)
