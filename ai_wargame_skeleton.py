@@ -630,53 +630,99 @@ class GameGUI:
         self.buttons = []
         self.selected_coord = None  # Initialize selected_coord attribute
         self.turn_count = 0  # Initialize turn_count
+        self.game_label = tk.Label(root, text="AI WARGAME", font=("Arial", 18))
+        self.game_label.grid(
+            row=0, column=3, columnspan=2, pady=10
+        )  # Place the label at the top
         self.turn_label = tk.Label(root, text="Turn: 0 (Attacker)")
         self.turn_label.grid(
             row=0, column=6, columnspan=1
         )  # Place the label at the top
 
+        param_font = ("Arial", 10)
+        board_font = ("Arial", 12)
+        header_color = "lightblue"
+
         # Add buttons for manual entry and other options
         manual_entry_button = tk.Button(
-            root, text="Manual Entry (H-H)", command=self.manual_entry
+            root, text="Manual Entry (H-H)", font=param_font, command=self.manual_entry
         )
-        manual_entry_button.grid(row=6, column=0, columnspan=2)
+        manual_entry_button.grid(row=2, column=0, columnspan=2, pady=5)
 
         manual_ai_button = tk.Button(
-            root, text="Manual vs AI (H-AI / AI-H)", command=self.manual_vs_ai
+            root, text="Manual vs AI (H-AI / AI-H)", font=param_font, command=self.manual_vs_ai
         )
-        manual_ai_button.grid(row=6, column=2, columnspan=2)
+        manual_ai_button.grid(row=2, column=2, columnspan=2, pady=5)
 
         ai_vs_ai_button = tk.Button(
-            root, text="AI vs AI (AI-AI)", command=self.ai_vs_ai
+            root, text="AI vs AI (AI-AI)", font=param_font, command=self.ai_vs_ai
         )
-        ai_vs_ai_button.grid(row=6, column=4, columnspan=2)
+        ai_vs_ai_button.grid(row=2, column=4, columnspan=2, pady=5)
 
-        max_time_label = tk.Label(root, text="Max Time (seconds):")
-        max_time_label.grid(row=7, column=0)
-        self.max_time_entry = tk.Entry(root)
-        self.max_time_entry.grid(row=7, column=1)
+        max_time_frame = tk.Frame(root)
+        max_time_label = tk.Label(max_time_frame, text="Max Time (seconds):", font=param_font)
+        max_time_label.grid(row=0, column=0)
+        self.max_time_entry = tk.Entry(max_time_frame)
+        self.max_time_entry.grid(row=0, column=1)
+        max_time_frame.grid(row=1, column=0, columnspan=3, pady=5)
 
-        max_turns_label = tk.Label(root, text="Max Turns:")
-        max_turns_label.grid(row=7, column=2)
-        self.max_turns_entry = tk.Entry(root)
-        self.max_turns_entry.grid(row=7, column=3)
+        max_turns_frame = tk.Frame(root)
+        max_turns_label = tk.Label(max_turns_frame, text="Max Turns:", font=param_font)
+        max_turns_label.grid(row=0, column=0)
+        self.max_turns_entry = tk.Entry(max_turns_frame)
+        self.max_turns_entry.grid(row=0, column=1)
+        max_turns_frame.grid(row=1, column=3, columnspan=2, pady=5)
 
         alpha_beta_var = tk.BooleanVar()
         alpha_beta_checkbox = tk.Checkbutton(
-            root, text="Use Alpha-Beta", variable=alpha_beta_var
+            root, text="Use Alpha-Beta", font=param_font, variable=alpha_beta_var
         )
-        alpha_beta_checkbox.grid(row=7, column=4, columnspan=2)
+        alpha_beta_checkbox.grid(row=1, column=5, pady=5)
         alpha_beta_var.set(False)  # Default to Alpha-Beta
 
+        row_shift = 5
+        col_shift = 2
+        
+        restart_button = tk.Button(
+            root, text="Restart Game", font=param_font, # TODO: command=self.ai_vs_ai
+        )
+        restart_button.grid(row=3, column=0)
+
+        # Create board column header
+        for col in range(col_shift, 5+col_shift):
+            button = tk.Label(
+                    root,
+                    width=15,
+                    height=3,
+                    text=col-col_shift, 
+                    font=board_font,
+                    bg=header_color
+                )
+            button.grid(row=3, column=col)
+
+        # Create board row header
+        alphabet = ['A', 'B', 'C', 'D', 'E']
+        for row in range(row_shift, 5+row_shift):
+            button = tk.Label(
+                    root,
+                    width=14,
+                    height=4,
+                    text=alphabet[row-row_shift], 
+                    font=board_font,
+                    bg=header_color
+                )
+            button.grid(row=row, column=0)
+
         # Create a 5x5 grid of buttons
-        for row in range(5):
+        for row in range(row_shift, 5+row_shift):
             button_row = []
-            for col in range(5):
+            for col in range(col_shift, 5+col_shift):
                 button = tk.Button(
                     root,
-                    width=30,
-                    height=5,
-                    command=lambda row=row, col=col: self.on_button_click(row, col),
+                    width=14,
+                    height=3,
+                    font=board_font,
+                    command=lambda row=row, col=col: self.on_button_click(row-row_shift, col-col_shift),
                 )
                 button.grid(row=row, column=col)
                 button_row.append(button)
@@ -711,11 +757,11 @@ class GameGUI:
                 text = ""
                 color = "SystemButtonFace"
                 if unit:
-                    text = f"{unit.player}\n{unit.type}\n{unit.health}"
+                    text = f"{unit.type.name}\n{unit.health}"
                     if unit.player == Player.Defender:
                         color = "green"
                     if unit.player == Player.Attacker:
-                        color = "blue"
+                        color = "red"
                 self.buttons[row][col].config(text=text)
                 self.buttons[row][col].config(bg=color)
 
