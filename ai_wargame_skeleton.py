@@ -388,12 +388,21 @@ class Game:
                 elif self.get(coords.src).player == self.get(coords.dst).player:
                     print("Healing Ally Action")
                     # Heal Ally code
+                    print(self.get(coords.src).health)
+                    print(self.get(coords.src).repair_amount(self.get(coords.dst)))
+                    self.mod_health(coords.dst, self.get(coords.src).repair_amount(self.get(coords.dst)))
+                    print(self.get(coords.src).health)
 
                 elif self.get(coords.src).player != self.get(coords.dst).player:
                     print("Attacking Enemy Action")
+                    print(self.get(coords.src).health)
+                    print(self.get(coords.src).damage_amount(self.get(coords.dst)))
+                    self.mod_health(coords.dst, -self.get(coords.src).damage_amount(self.get(coords.dst)))
+                    #self.get(coords.dst).mod_health(coords.src, -self.get(coords.dst).damage_amount(self.get(coords.src)))
+                    print(self.get(coords.src).health)
                     # Attack and enemy code here
                     # if dead = set coord src to None
-                    # self.set(coords.src, None)
+                    #self.set(coords.src, None)
 
             else:
                 self.set(coords.dst, self.get(coords.src))
