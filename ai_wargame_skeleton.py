@@ -808,7 +808,7 @@ class GameGUI:
     def on_button_click(self, row, col):
         # Handle button clicks as before
         pass
-
+    
     def update_buttons(self):
         for row in range(5):
             for col in range(5):
@@ -846,6 +846,11 @@ class GameGUI:
                         winner = self.game.has_winner()
                         messagebox.showinfo("Game Over", f"{winner.name} wins!")
                 else:
+                    if self.game.get(self.selected_coord).player.value==0:
+                        self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="red")
+                    else:
+                        self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="green")
+                    self.selected_coord = None
                     messagebox.showerror(
                         "Invalid Move", "Invalid move. Try again. move 1"
                     )
@@ -862,6 +867,11 @@ class GameGUI:
                     winner = self.game.has_winner()
                     messagebox.showinfo("Game Over", f"{winner.name} wins!")
             else:
+                if self.game.get(self.selected_coord).player.value==0:
+                    self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="red")
+                else:
+                    self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="green")
+                self.selected_coord = None
                 messagebox.showerror("Invalid Move", "Invalid move. Try again. move 2")
         else:
             messagebox.showerror("Invalid Move", "Please select a Unit.")
