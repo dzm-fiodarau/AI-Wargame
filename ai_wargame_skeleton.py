@@ -282,6 +282,9 @@ class Game:
 
     def __post_init__(self):
         """Automatically called after class init to set up the default board state."""
+        self.reset_board()
+
+    def reset_board(self):
         dim = self.options.dim
         self.board = [[None for _ in range(dim)] for _ in range(dim)]
         md = dim - 1
@@ -747,7 +750,7 @@ class GameGUI:
         col_shift = 2
         
         restart_button = tk.Button(
-            root, text="Restart Game", font=param_font, # TODO: command=self.ai_vs_ai
+            root, text="Restart Game", font=param_font, command=self.restart_game
         )
         restart_button.grid(row=3, column=0)
 
@@ -791,6 +794,15 @@ class GameGUI:
                 button_row.append(button)
             self.buttons.append(button_row)
 
+        self.update_buttons()
+
+    def restart_game(self):
+        self.selected_coord = None
+        self.turn_count = 0
+        self.game.next_player = Player.Attacker
+
+        self.game.reset_board()
+        self.update_turn_label()
         self.update_buttons()
 
     def manual_entry(self):
