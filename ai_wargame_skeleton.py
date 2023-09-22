@@ -47,6 +47,19 @@ class GameType(Enum):
     CompVsDefender = 2
     CompVsComp = 3
 
+class LogType(Enum):
+    SelectEmpty = 0
+    NotAdjacent = 1
+    HealAtMax = 2
+    TrivialHeal = 3
+    EngagedInCombat = 4
+    IllegalMove = 5
+    UnknownError = 6
+    SelfDestruct = 7
+    Heal = 8
+    Attack = 9
+    Move = 10
+    GameEnd = 11
 
 ##############################################################################################################
 
@@ -346,24 +359,24 @@ class Game:
             target.mod_health(health_delta)
             self.remove_dead(coord)
 
-    def is_valid_move(self, coords: CoordPair) -> bool:
+    def is_valid_move(self, coords: CoordPair) -> (bool, LogType):
         """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
         print(coords)
         print("inside is_valid_move() function")
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
             print("Coords outside board dimensions.")
-            return False
+            return False, None
 
         if coords.src == coords.dst:
             print("Self destruct Valid")
-            return True
+            return True, LogType.SelfDestruct
 
         # Check if the source and destination coordinates are adjacent
         adjacent_coords = list(coords.src.iter_adjacent())
         #print(adjacent_coords)
         if coords.dst not in adjacent_coords:
             print("Src and dst coords are not adjacent.")
-            return False
+            return False, LogType.NotAdjacent
 
         # Seems unnecessary
         # if unit is None or unit.player != self.next_player:
@@ -378,20 +391,20 @@ class Game:
         ):
             if(dst_unit.health==9):
                 print(f"{dst_unit.type.name} is at maximum health.")
-                return False
+                return False, LogType.HealAtMax
             elif(src_unit.repair_table[src_unit.type.value][dst_unit.type.value]<=0):
                 print(f"{src_unit.type.name} cannot heal {dst_unit.type.name}.")
-                return False
+                return False, LogType.TrivialHeal
             else:
                 print("Healing Valid")
-                return True
+                return True, LogType.Heal
 
         if (
             dst_unit is not None
             and self.get(coords.src).player != self.get(coords.dst).player
         ):
             print("Attacking Enemy Valid")
-            return True
+            return True, LogType.Attack
         
         src_is_ai_firewall_program = (src_unit.type.value == 0 
            or src_unit.type.value == 3
@@ -404,7 +417,7 @@ class Game:
                 if(adjacent_unit is not None
                    and adjacent_unit.player != self.next_player):
                     print(f"{src_unit.type.name} is already engaged in combat. Cannot move.")
-                    return False
+                    return False, LogType.EngagedInCombat
 
         if dst_unit is None:
             if src_is_ai_firewall_program:
@@ -412,27 +425,29 @@ class Game:
                     if (coords.dst.row>coords.src.row
                         or coords.dst.col>coords.src.col):
                         print(f"{src_unit.player.name}'s {src_unit.type.name} cannot move that way.")
-                        return False
+                        return False, LogType.IllegalMove
                     else:
                         print("Move Valid")
-                        return True
+                        return True, LogType.Move
                 else:
                     if (coords.dst.row<coords.src.row
                         or coords.dst.col<coords.src.col):
                         print(f"{src_unit.player.name}'s {src_unit.type.name} cannot move that way.")
-                        return False
+                        return False, LogType.IllegalMove
                     else:
                         print("Move Valid")
-                        return True
+                        return True, LogType.Move
             else:
                 print("Move Valid")
-                return True
+                return True, LogType.Move
         else:
             print("Something is wrong")
+            return False, LogType.UnknownError
 
-    def perform_move(self, coords: CoordPair) -> Tuple[bool, str]:
+    def perform_move(self, coords: CoordPair) -> (bool, LogType):
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
-        if self.is_valid_move(coords):
+        is_valid, log_type = self.is_valid_move(coords)
+        if is_valid:
             if self.get(coords.dst) is not None:
                 if coords.src == coords.dst:
                     print("Self destruct Action")
@@ -464,8 +479,8 @@ class Game:
             else:
                 self.set(coords.dst, self.get(coords.src))
                 self.set(coords.src, None)
-            return (True, "")
-        return (False, "invalid move")
+            return True, log_type
+        return False, log_type
 
     def next_turn(self):
         """Transitions game to the next turn."""
@@ -524,35 +539,35 @@ class Game:
             else:
                 print("Invalid coordinates! Try again.")
 
-    def human_turn(self, coord: Coord) -> Tuple[bool, str]:
+    def human_turn(self, coord: Coord) -> (bool, LogType):
         """Human player plays a move (or get via broker)."""
         if self.options.broker is not None:
             print("Getting next move with auto-retry from game broker...")
             while True:
                 mv = self.get_move_from_broker()
                 if mv is not None:
-                    (success, result) = self.perform_move(mv)
+                    success, result = self.perform_move(mv)
                     print(f"Broker {self.next_player.name}: ", end="")
                     print(result)
                     if success:
                         self.next_turn()
-                        return (True, "invalid move")
+                        return True, result
                         break
                 sleep(0.1)
         else:
             while True:
                 # mv = self.read_move()
                 mv = coord
-                (success, result) = self.perform_move(mv)
+                success, result = self.perform_move(mv)
                 if success:
                     print(f"Player {self.next_player.name}: ", end="")
                     print(result)
                     self.next_turn()
-                    return (True, "invalid move")
+                    return True, result
                     break
                 else:
                     print("The move is not valid! Try again.")
-                    return (False, "invalid move")
+                    return False, result
 
     def computer_turn(self) -> CoordPair | None:
         """Computer plays a move."""
@@ -690,6 +705,9 @@ class Game:
 
 ##############################################################################################################
 class GameGUI:
+    logs: tk.Text = None
+    log_console_frame: tk.Frame = None
+
     def __init__(self, root, game):
         self.root = root
         self.game = game
@@ -754,6 +772,17 @@ class GameGUI:
         )
         restart_button.grid(row=3, column=0)
 
+        self.log_console_frame = tk.Frame(root, width=25)
+        scrollbar= tk.Scrollbar(self.log_console_frame, orient="vertical")
+        scrollbar.pack(side="right", fill="y")
+        self.logs = tk.Text(self.log_console_frame, width=50, yscrollcommand=scrollbar.set)
+        # for i in range(100):
+        #     self.logs.insert(tk.END, "This is a test!!!\n")
+        self.logs.pack()
+        scrollbar.config(command=self.logs.yview)
+
+        self.log_console_frame.grid(row=0, column=7, rowspan=9)
+
         # Create board column header
         for col in range(col_shift, 5+col_shift):
             button = tk.Label(
@@ -800,6 +829,7 @@ class GameGUI:
         self.selected_coord = None
         self.turn_count = 0
         self.game.next_player = Player.Attacker
+        self.logs.delete("1.0", tk.END)
 
         self.game.reset_board()
         self.update_turn_label()
@@ -851,42 +881,32 @@ class GameGUI:
                 success, result = self.game.human_turn(move)
                 if success:
                     self.update_buttons()
-                    self.selected_coord = None
                     self.turn_count += 1  # Increment turn count
                     self.update_turn_label()  # Update the turn label
+                    self.create_log(result, coord)
                     if self.game.has_winner() is not None:
                         winner = self.game.has_winner()
+                        self.create_log(LogType.GameEnd, coord)
                         messagebox.showinfo("Game Over", f"{winner.name} wins!")
                 else:
-                    if self.game.get(self.selected_coord).player.value==0:
-                        self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="red")
-                    else:
-                        self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="green")
-                    self.selected_coord = None
-                    messagebox.showerror(
-                        "Invalid Move", "Invalid move. Try again. move 1"
-                    )
+                    self.create_log(result, coord)
         elif self.selected_coord is not None: # Attacking enemy unit or moving
             print("Moving 3")
             move = CoordPair(self.selected_coord, coord)
             success, result = self.game.human_turn(move)
             if success:
                 self.update_buttons()
-                self.selected_coord = None
                 self.turn_count += 1  # Increment turn count
                 self.update_turn_label()  # Update the turn label
+                self.create_log(result, coord)
                 if self.game.has_winner() is not None:
                     winner = self.game.has_winner()
+                    self.create_log(LogType.GameEnd, coord)
                     messagebox.showinfo("Game Over", f"{winner.name} wins!")
             else:
-                if self.game.get(self.selected_coord).player.value==0:
-                    self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="red")
-                else:
-                    self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="green")
-                self.selected_coord = None
-                messagebox.showerror("Invalid Move", "Invalid move. Try again. move 2")
+                self.create_log(result, coord)
         else:
-            messagebox.showerror("Invalid Move", "Please select a Unit.")
+            self.create_log(LogType.SelectEmpty, coord)
 
     def update_turn_label(self):
         # Update the turn label with the current turn count and player's turn
@@ -894,6 +914,54 @@ class GameGUI:
             "Attacker's Turn" if self.game.next_player == Player.Attacker else "Defender's Turn"
         )
         self.turn_label.config(text=f"Turn: {self.turn_count}\n({player_turn})")
+
+    def create_log(self, log_type, coord):
+        print(f"IN CREATE LOG - {self.selected_coord} to {coord}")
+
+        msg = ""
+        selected_unit = self.game.get(self.selected_coord)
+        affected_unit = self.game.get(coord)
+        print(f"IN CREATE LOG - {selected_unit} to {affected_unit}")
+        match log_type.value:
+            case 0:
+                msg += f"There is no unit on {coord}."
+            case 1:
+                msg += f"{coord} is not adjacent to {self.selected_coord}."
+            case 2:
+                msg += f"{affected_unit.type.name} ({coord}) is already at max health."
+            case 3:
+                msg += f"A {affected_unit.type.name} cannot be healed by a {selected_unit.type.name}."
+            case 4:
+                msg += f"{selected_unit.type.name} ({self.selected_coord}) is already engaged in combat."
+            case 5:
+                msg += f"{selected_unit.player.name}'s {selected_unit.type.name} cannot move in that direction."
+            case 6:
+                msg += f"Unkown error."
+            case 7:
+                msg = f"{selected_unit.type.name} ({coord}) self_desctructed."
+            case 8:
+                msg = f"{selected_unit.type.name} ({self.selected_coord}) healed {affected_unit.type.name} ({coord})."
+            case 9:
+                msg = f"Attack from {self.selected_coord} to {coord}."
+            case 10:
+                msg = f"{affected_unit.type.name} moved from {self.selected_coord} to {coord}."
+            case 11:
+                msg = f"{self.game.has_winner()} wins!"
+            case _:
+                msg = f"Wrong log type was passed."
+        player = self.game.next_player.next().name
+        if log_type.value<=6:
+            player = self.game.next_player.name
+            msg = "Invalid Move - " + msg
+            messagebox.showerror("Invalid Move", msg)
+            if self.game.get(self.selected_coord).player.value==0:
+                self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="red")
+            else:
+                self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="green")
+
+        self.logs.insert("1.0", f"{player}: {msg}\n\n")
+        self.selected_coord = None
+
 
 
 ##############################################################################################################
