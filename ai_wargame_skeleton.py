@@ -772,6 +772,11 @@ class GameGUI:
         )
         restart_button.grid(row=3, column=0)
 
+        restart_button = tk.Button(
+            root, text="Download Logs", font=param_font, command=self.download_logs
+        )
+        restart_button.grid(row=0, column=7)
+
         self.log_console_frame = tk.Frame(root, width=25)
         scrollbar= tk.Scrollbar(self.log_console_frame, orient="vertical")
         scrollbar.pack(side="right", fill="y")
@@ -830,6 +835,8 @@ class GameGUI:
         self.turn_count = 0
         self.game.next_player = Player.Attacker
         self.logs.delete("1.0", tk.END)
+        self.game._attacker_has_ai = True
+        self.game._defender_has_ai = True
 
         self.game.reset_board()
         self.update_turn_label()
@@ -919,8 +926,11 @@ class GameGUI:
         print(f"IN CREATE LOG - {self.selected_coord} to {coord}")
 
         msg = ""
-        selected_unit = self.game.get(self.selected_coord)
+        selected_unit = ""
+        if log_type.value != 11:
+            selected_unit = self.game.get(self.selected_coord)
         affected_unit = self.game.get(coord)
+
         print(f"IN CREATE LOG - {selected_unit} to {affected_unit}")
         match log_type.value:
             case 0:
@@ -938,7 +948,7 @@ class GameGUI:
             case 6:
                 msg += f"Unkown error."
             case 7:
-                msg = f"{selected_unit.type.name} ({coord}) self_desctructed."
+                msg = f"Unit on {coord} self_desctructed."
             case 8:
                 msg = f"{selected_unit.type.name} ({self.selected_coord}) healed {affected_unit.type.name} ({coord})."
             case 9:
@@ -949,9 +959,12 @@ class GameGUI:
                 msg = f"{self.game.has_winner()} wins!"
             case _:
                 msg = f"Wrong log type was passed."
-        player = self.game.next_player.next().name
+
+        player = ""
+        if log_type.value != 11:
+            player = f"{self.game.next_player.next().name}: "
         if log_type.value<=6:
-            player = self.game.next_player.name
+            player = f"{self.game.next_player.name}: "
             msg = "Invalid Move - " + msg
             messagebox.showerror("Invalid Move", msg)
             if self.game.get(self.selected_coord).player.value==0:
@@ -959,10 +972,17 @@ class GameGUI:
             else:
                 self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="green")
 
-        self.logs.insert("1.0", f"{player}: {msg}\n\n")
+        self.logs.insert(tk.END, f"{player}{msg}\n\n")
+        self.logs.see(tk.END)
+        if log_type.value==11:
+            self.download_logs()
         self.selected_coord = None
 
-
+    def download_logs(self):
+        file = open(f"gameTrace-{self.game.options.alpha_beta}-{self.game.options.max_time}-{self.game.options.max_turns}.txt", "w")
+        file.write(self.logs.get("1.0", tk.END))
+        file.close()
+        messagebox.showinfo("Info", "Game trace downloaded successfully.")
 
 ##############################################################################################################
 
