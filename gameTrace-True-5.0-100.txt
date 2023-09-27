@@ -1,0 +1,104 @@
+Timeout: 5.0 s
+Max Turns: 100
+Attacker: H, Defender: H
+
+    0   1   2   3   4  
+A: dA9 dT9 dF9  .   .  
+B: dT9 dP9  .   .   .  
+C: dF9  .   .   .  aP9 
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+(Turn #1) Attacker: Program moved from C4 to B4.
+    0   1   2   3   4  
+A: dA9 dT9 dF9  .   .  
+B: dT9 dP9  .   .  aP9 
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+(Turn #2) Defender: Firewall moved from A2 to A3.
+    0   1   2   3   4  
+A: dA9 dT9  .  dF9  .  
+B: dT9 dP9  .   .  aP9 
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+(Turn #3) Attacker: Invalid Move - There is no unit on B3.
+
+(Turn #3) Attacker: Program moved from B4 to B3.
+    0   1   2   3   4  
+A: dA9 dT9  .  dF9  .  
+B: dT9 dP9  .  aP9  .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+(Turn #4) Defender: Attack from A3 to B3.
+    0   1   2   3   4  
+A: dA9 dT9  .  dF8  .  
+B: dT9 dP9  .  aP8  .  
+C: dF9  .   .   .   .  
+D:  .   .   .  aF9 aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+(Turn #5) Attacker: Firewall moved from D3 to C3.
+    0   1   2   3   4  
+A: dA9 dT9  .  dF8  .  
+B: dT9 dP9  .  aP8  .  
+C: dF9  .   .  aF9  .  
+D:  .   .   .   .  aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+(Turn #6) Defender: Program moved from B1 to B2.
+    0   1   2   3   4  
+A: dA9 dT9  .  dF8  .  
+B: dT9  .  dP9 aP8  .  
+C: dF9  .   .  aF9  .  
+D:  .   .   .   .  aV9 
+E:  .   .  aP9 aV9 aA9 
+
+
+(Turn #7) Attacker: Invalid Move - There is no unit on A0.
+
+(Turn #7) Attacker: Invalid Move - There is no unit on D3.
+
+(Turn #7) Attacker: Unit on C3 self_desctructed.
+    0   1   2   3   4  
+A: dA9 dT9  .  dF8  .  
+B: dT9  .  dP7 aP6  .  
+C: dF9  .   .   .   .  
+D:  .   .   .   .  aV7 
+E:  .   .  aP9 aV9 aA9 
+
+
+(Turn #8) Defender: Invalid Move - There is no unit on C3.
+
+(Turn #8) Defender: Invalid Move - There is no unit on D4.
+
+(Turn #8) Defender: Unit on A0 self_desctructed.
+    0   1   2   3   4  
+A:  .  dT7  .  dF8  .  
+B: dT7  .  dP7 aP6  .  
+C: dF9  .   .   .   .  
+D:  .   .   .   .  aV7 
+E:  .   .  aP9 aV9 aA9 
+
+
+Player.Attacker wins in 8 turns!
+    0   1   2   3   4  
+A:  .  dT7  .  dF8  .  
+B: dT7  .  dP7 aP6  .  
+C: dF9  .   .   .   .  
+D:  .   .   .   .  aV7 
+E:  .   .  aP9 aV9 aA9 
+
+
+

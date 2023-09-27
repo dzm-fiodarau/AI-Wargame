@@ -54,7 +54,7 @@ class LogType(Enum):
     TrivialHeal = 3
     EngagedInCombat = 4
     IllegalMove = 5
-    UnknownError = 6
+    OthersTurn = 6
     SelfDestruct = 7
     Heal = 8
     Attack = 9
@@ -442,7 +442,7 @@ class Game:
                 return True, LogType.Move
         else:
             print("Something is wrong")
-            return False, LogType.UnknownError
+            return False, None
 
     def perform_move(self, coords: CoordPair) -> (bool, LogType):
         """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
@@ -493,8 +493,14 @@ class Game:
         output = ""
         output += f"Next player: {self.next_player.name}\n"
         output += f"Turns played: {self.turns_played}\n"
-        coord = Coord()
         output += "\n   "
+        output += self.get_board_config()
+        return output
+    
+    def get_board_config(self) -> str:
+        dim = self.options.dim
+        coord = Coord()
+        output = "   "
         for col in range(dim):
             coord.col = col
             label = coord.col_string()
@@ -514,6 +520,7 @@ class Game:
             output += "\n"
         return output
 
+
     def __str__(self) -> str:
         """Default string representation of a game."""
         return self.to_string()
@@ -521,7 +528,7 @@ class Game:
     def is_valid_coord(self, coord: Coord) -> bool:
         """Check if a Coord is valid within out board dimensions."""
         dim = self.options.dim
-        if coord.row < 0 or coord.row >= dim or coord.col < 0 or coord.col >= dim:
+        if coord is None or coord.row < 0 or coord.row >= dim or coord.col < 0 or coord.col >= dim:
             return False
         return True
 
@@ -705,12 +712,11 @@ class Game:
 
 ##############################################################################################################
 class GameGUI:
-    logs: tk.Text = None
-    log_console_frame: tk.Frame = None
 
     def __init__(self, root, game):
         self.root = root
         self.game = game
+        self.console = Console(root, self)
         self.buttons = []
         self.selected_coord = None  # Initialize selected_coord attribute
         self.turn_count = 0  # Initialize turn_count
@@ -718,7 +724,7 @@ class GameGUI:
         self.game_label.grid(
             row=0, column=3, columnspan=2, pady=10
         )  # Place the label at the top
-        self.turn_label = tk.Label(root, text="Turn: 0\n(Attacker's Turn)")
+        self.turn_label = tk.Label(root, text="Turn: 1\n(Attacker's Turn)")
         self.turn_label.grid(
             row=0, column=6, columnspan=1
         )  # Place the label at the top
@@ -773,20 +779,9 @@ class GameGUI:
         restart_button.grid(row=3, column=0)
 
         restart_button = tk.Button(
-            root, text="Download Logs", font=param_font, command=self.download_logs
+            root, text="Download Logs", font=param_font, command=self.console.download_logs
         )
         restart_button.grid(row=0, column=7)
-
-        self.log_console_frame = tk.Frame(root, width=25)
-        scrollbar= tk.Scrollbar(self.log_console_frame, orient="vertical")
-        scrollbar.pack(side="right", fill="y")
-        self.logs = tk.Text(self.log_console_frame, width=50, yscrollcommand=scrollbar.set)
-        # for i in range(100):
-        #     self.logs.insert(tk.END, "This is a test!!!\n")
-        self.logs.pack()
-        scrollbar.config(command=self.logs.yview)
-
-        self.log_console_frame.grid(row=0, column=7, rowspan=9)
 
         # Create board column header
         for col in range(col_shift, 5+col_shift):
@@ -834,13 +829,16 @@ class GameGUI:
         self.selected_coord = None
         self.turn_count = 0
         self.game.next_player = Player.Attacker
-        self.logs.delete("1.0", tk.END)
         self.game._attacker_has_ai = True
         self.game._defender_has_ai = True
 
         self.game.reset_board()
         self.update_turn_label()
         self.update_buttons()
+        self.console.logs.config(state=tk.NORMAL)
+        self.console.logs.delete("1.0", tk.END)
+        self.console.logs.config(state=tk.DISABLED)
+        self.console.create_initial_log()
 
     def manual_entry(self):
         # Implement manual entry logic here
@@ -890,13 +888,15 @@ class GameGUI:
                     self.update_buttons()
                     self.turn_count += 1  # Increment turn count
                     self.update_turn_label()  # Update the turn label
-                    self.create_log(result, coord)
+                    self.console.create_log(result, coord)
+                    self.selected_coord = None
                     if self.game.has_winner() is not None:
                         winner = self.game.has_winner()
-                        self.create_log(LogType.GameEnd, coord)
+                        self.console.create_log(LogType.GameEnd, coord)
                         messagebox.showinfo("Game Over", f"{winner.name} wins!")
                 else:
-                    self.create_log(result, coord)
+                    self.console.create_log(result, coord)
+                    self.reset_turn(result)
         elif self.selected_coord is not None: # Attacking enemy unit or moving
             print("Moving 3")
             move = CoordPair(self.selected_coord, coord)
@@ -905,87 +905,121 @@ class GameGUI:
                 self.update_buttons()
                 self.turn_count += 1  # Increment turn count
                 self.update_turn_label()  # Update the turn label
-                self.create_log(result, coord)
+                self.console.create_log(result, coord)
+                self.selected_coord = None
                 if self.game.has_winner() is not None:
                     winner = self.game.has_winner()
-                    self.create_log(LogType.GameEnd, coord)
+                    self.console.create_log(LogType.GameEnd, coord)
                     messagebox.showinfo("Game Over", f"{winner.name} wins!")
             else:
-                self.create_log(result, coord)
+                self.console.create_log(result, coord)
+                self.reset_turn(result)
         else:
-            self.create_log(LogType.SelectEmpty, coord)
+            if unit is not None:
+                self.console.create_log(LogType.OthersTurn, coord)
+            else:
+                self.console.create_log(LogType.SelectEmpty, coord)
+            self.reset_turn(LogType.SelectEmpty)
 
     def update_turn_label(self):
         # Update the turn label with the current turn count and player's turn
         player_turn = (
             "Attacker's Turn" if self.game.next_player == Player.Attacker else "Defender's Turn"
         )
-        self.turn_label.config(text=f"Turn: {self.turn_count}\n({player_turn})")
+        self.turn_label.config(text=f"Turn: {self.turn_count+1}\n({player_turn})")
+
+    def reset_turn(self, log_type):
+        if log_type.value<6:
+            if self.game.get(self.selected_coord).player.value==0:
+                self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="red")
+            else:
+                self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="green")
+        self.selected_coord = None
+
+##############################################################################################################
+
+##############################################################################################################
+class Console:
+    game_gui: GameGUI
+    logs: tk.Text
+    log_console_frame: tk.Frame
+
+    def __init__(self, root, game_gui):
+        self.game_gui = game_gui
+        self.log_console_frame = tk.Frame(root, width=25)
+        scrollbar= tk.Scrollbar(self.log_console_frame, orient="vertical")
+        scrollbar.pack(side="right", fill="y")
+        self.logs = tk.Text(self.log_console_frame, width=50, yscrollcommand=scrollbar.set, state=tk.DISABLED)
+        self.logs.pack()
+        scrollbar.config(command=self.logs.yview)
+        self.create_initial_log()
+        self.log_console_frame.grid(row=0, column=7, rowspan=9)
+
+    def create_initial_log(self):
+        # TODO for D2: add if/else to add AI-specific params
+        msg = f"Timeout: {self.game_gui.game.options.max_time} s\nMax Turns: {self.game_gui.game.options.max_turns}\nAttacker: H, Defender: H\n\n{self.game_gui.game.get_board_config()}"
+        self.insert_in_log(msg)
 
     def create_log(self, log_type, coord):
-        print(f"IN CREATE LOG - {self.selected_coord} to {coord}")
-
         msg = ""
         selected_unit = ""
         if log_type.value != 11:
-            selected_unit = self.game.get(self.selected_coord)
-        affected_unit = self.game.get(coord)
+            selected_unit = self.game_gui.game.get(self.game_gui.selected_coord)
+            if log_type.value<=6:
+                msg += f"(Turn #{self.game_gui.turn_count+1}) {self.game_gui.game.next_player.name}: Invalid Move - "
+            else:
+                msg += f"(Turn #{self.game_gui.turn_count}) {self.game_gui.game.next_player.next().name}: "
+        affected_unit = self.game_gui.game.get(coord)
 
-        print(f"IN CREATE LOG - {selected_unit} to {affected_unit}")
         match log_type.value:
             case 0:
                 msg += f"There is no unit on {coord}."
             case 1:
-                msg += f"{coord} is not adjacent to {self.selected_coord}."
+                msg += f"{coord} is not adjacent to {self.game_gui.selected_coord}."
             case 2:
                 msg += f"{affected_unit.type.name} ({coord}) is already at max health."
             case 3:
                 msg += f"A {affected_unit.type.name} cannot be healed by a {selected_unit.type.name}."
             case 4:
-                msg += f"{selected_unit.type.name} ({self.selected_coord}) is already engaged in combat."
+                msg += f"{selected_unit.type.name} ({self.game_gui.selected_coord}) is already engaged in combat."
             case 5:
                 msg += f"{selected_unit.player.name}'s {selected_unit.type.name} cannot move in that direction."
             case 6:
-                msg += f"Unkown error."
+                msg += f"You can not select the other's player unit."
             case 7:
-                msg = f"Unit on {coord} self_desctructed."
+                msg += f"Unit on {coord} self_desctructed."
             case 8:
-                msg = f"{selected_unit.type.name} ({self.selected_coord}) healed {affected_unit.type.name} ({coord})."
+                msg += f"{selected_unit.type.name} ({self.game_gui.selected_coord}) healed {affected_unit.type.name} ({coord})."
             case 9:
-                msg = f"Attack from {self.selected_coord} to {coord}."
+                msg += f"Attack from {self.game_gui.selected_coord} to {coord}."
             case 10:
-                msg = f"{affected_unit.type.name} moved from {self.selected_coord} to {coord}."
+                msg += f"{affected_unit.type.name} moved from {self.game_gui.selected_coord} to {coord}."
             case 11:
-                msg = f"{self.game.has_winner()} wins!"
+                msg += f"{self.game_gui.game.has_winner()} wins in {self.game_gui.turn_count} turns!"
             case _:
-                msg = f"Wrong log type was passed."
+                msg += f"Wrong log type was passed."
 
-        player = ""
-        if log_type.value != 11:
-            player = f"{self.game.next_player.next().name}: "
         if log_type.value<=6:
-            player = f"{self.game.next_player.name}: "
-            msg = "Invalid Move - " + msg
             messagebox.showerror("Invalid Move", msg)
-            if self.game.get(self.selected_coord).player.value==0:
-                self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="red")
-            else:
-                self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="green")
-
-        self.logs.insert(tk.END, f"{player}{msg}\n\n")
-        self.logs.see(tk.END)
+        else:
+            msg += f"\n{self.game_gui.game.get_board_config()}"
+        self.insert_in_log(msg)
         if log_type.value==11:
             self.download_logs()
-        self.selected_coord = None
+        
+    def insert_in_log(self, msg):
+        self.logs.config(state=tk.NORMAL)
+        self.logs.insert(tk.END, f"{msg}\n\n")
+        self.logs.see(tk.END)
+        self.logs.config(state=tk.DISABLED)
 
     def download_logs(self):
-        file = open(f"gameTrace-{self.game.options.alpha_beta}-{self.game.options.max_time}-{self.game.options.max_turns}.txt", "w")
+        file = open(f"gameTrace-{self.game_gui.game.options.alpha_beta}-{self.game_gui.game.options.max_time}-{self.game_gui.game.options.max_turns}.txt", "w")
         file.write(self.logs.get("1.0", tk.END))
         file.close()
         messagebox.showinfo("Info", "Game trace downloaded successfully.")
 
 ##############################################################################################################
-
 
 def main():
     # parse command line arguments
