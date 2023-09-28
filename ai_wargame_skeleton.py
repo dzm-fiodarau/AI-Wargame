@@ -766,40 +766,47 @@ class GameGUI:
         self.game_mode.set("H-H")  # Initialize with "H-H" selected
 
         # Create radio buttons for game mode selection
+        game_mode_frame = tk.Frame(root)
         h_h_radio = tk.Radiobutton(
-            root, text="H-H", variable=self.game_mode, value="H-H", font=param_font
+            game_mode_frame, 
+            text="H-H", 
+            variable=self.game_mode, 
+            value="H-H", 
+            font=param_font
         )
-        h_h_radio.grid(row=2, column=0, columnspan=2, pady=5)
+        h_h_radio.grid(row=0, column=0, padx=5)
 
         h_ai_radio = tk.Radiobutton(
-            root,
+            game_mode_frame,
             text="H-AI",
             variable=self.game_mode,
             value="H-AI",
             font=param_font,
         )
-        h_ai_radio.grid(row=2, column=2, columnspan=2, pady=5)
+        h_ai_radio.grid(row=0, column=1, padx=5)
 
         h_ai_radio = tk.Radiobutton(
-            root,
+            game_mode_frame,
             text="AI-H",
             variable=self.game_mode,
             value="AI-H",
             font=param_font,
         )
-        h_ai_radio.grid(row=2, column=3, columnspan=1, pady=5)
+        h_ai_radio.grid(row=0, column=2, padx=5)
 
         ai_ai_radio = tk.Radiobutton(
-            root, text="AI-AI", variable=self.game_mode, value="AI-AI", font=param_font
+            game_mode_frame, text="AI-AI", variable=self.game_mode, value="AI-AI", font=param_font
         )
-        ai_ai_radio.grid(row=2, column=4, columnspan=2, pady=5)
+        ai_ai_radio.grid(row=0, column=3, padx=5)
+
+        game_mode_frame.grid(row=2, column=0, columnspan=3)
 
         # Add buttons for starting the game based on the selected mode
         # start_game_button = tk.Button(
         #    root, text="Start Game", font=param_font, command=self.start_game
         # )
         # start_game_button.grid(row=10, column=0, columnspan=6, pady=5)
-
+        
         max_time_frame = tk.Frame(root)
         max_time_label = tk.Label(
             max_time_frame, text="Max Time (seconds):", font=param_font
@@ -810,7 +817,7 @@ class GameGUI:
             0, self.game.options.max_time
         )  # Set the default value default of options
         self.max_time_entry.grid(row=0, column=1)
-        max_time_frame.grid(row=1, column=0, columnspan=3, pady=2)
+        max_time_frame.grid(row=1, column=0, columnspan=3, padx=5, pady=2)
 
         max_turns_frame = tk.Frame(root)
         max_turns_label = tk.Label(max_turns_frame, text="Max Turns:", font=param_font)
@@ -820,7 +827,7 @@ class GameGUI:
             0, self.game.options.max_turns
         )  # Set the default value default of options
         self.max_turns_entry.grid(row=0, column=1)
-        max_turns_frame.grid(row=1, column=2, columnspan=2, pady=2)
+        max_turns_frame.grid(row=1, column=2, columnspan=2, padx=5, pady=2)
 
         max_depth_frame = tk.Frame(root)
         max_depth_label = tk.Label(max_depth_frame, text="Max Depth:", font=param_font)
@@ -911,6 +918,7 @@ class GameGUI:
 
     def restart_game(self):
         self.selected_coord = None
+        self.game.turns_played = 0
         self.turn_count = 0
         self.game.next_player = Player.Attacker
         self.game._attacker_has_ai = True
@@ -1118,7 +1126,7 @@ class Console:
                 attacker = "AI"
                 defender = "H"
 
-        msg = f"Timeout: {self.game_gui.game.options.max_time} s\nMax Turns: {self.game_gui.game.options.max_turns}\n{self.game_gui.game.options.game_type}\nMax Depth: {self.game_gui.game.options.max_depth}\nMax Depth: {self.game_gui.game.options.min_depth}\nAlpha-Beta: {self.game_gui.game.options.alpha_beta} \n\n Attacker: {attacker} Defender: {defender}\n\n{self.game_gui.game.get_board_config()}"
+        msg = f"Timeout: {self.game_gui.game.options.max_time} s\nMax Turns: {self.game_gui.game.options.max_turns}\n{self.game_gui.game.options.game_type}\nMax Depth: {self.game_gui.game.options.max_depth}\nMin Depth: {self.game_gui.game.options.min_depth}\nAlpha-Beta: {self.game_gui.game.options.alpha_beta} \n\n Attacker: {attacker} Defender: {defender}\n\n{self.game_gui.game.get_board_config()}"
         self.insert_in_log(msg)
 
     def create_log(self, log_type, coord):
