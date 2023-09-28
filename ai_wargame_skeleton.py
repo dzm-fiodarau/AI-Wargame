@@ -920,6 +920,7 @@ class GameGUI:
         self.selected_coord = None
         self.game.turns_played = 0
         self.turn_count = 0
+        self.game.turns_played = 0
         self.game.next_player = Player.Attacker
         self.game._attacker_has_ai = True
         self.game._defender_has_ai = True
@@ -938,6 +939,8 @@ class GameGUI:
         self.game.options.max_depth = max_depth
         self.game.options.min_depth = min_depth
         self.game.options.alpha_beta = alpha_beta  # Set alpha_beta
+
+        print(self.game.options.max_turns)
 
         self.game.reset_board()
         self.update_turn_label()
