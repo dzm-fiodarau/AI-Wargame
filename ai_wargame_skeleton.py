@@ -758,55 +758,17 @@ class GameGUI:
         )  # Place the label at the top
 
         param_font = ("Arial", 10)
-        board_font = ("Arial", 12)
-        header_color = "lightblue"
+
+        self.init_params_row(root, param_font)
 
         # Create a variable to store the selected game mode
         self.game_mode = tk.StringVar()
         self.game_mode.set("H-H")  # Initialize with "H-H" selected
+        self.init_game_mode_row(root, param_font)
 
-        # Create radio buttons for game mode selection
-        game_mode_frame = tk.Frame(root)
-        h_h_radio = tk.Radiobutton(
-            game_mode_frame, 
-            text="H-H", 
-            variable=self.game_mode, 
-            value="H-H", 
-            font=param_font
-        )
-        h_h_radio.grid(row=0, column=0, padx=5)
+        self.init_board(root, param_font)
 
-        h_ai_radio = tk.Radiobutton(
-            game_mode_frame,
-            text="H-AI",
-            variable=self.game_mode,
-            value="H-AI",
-            font=param_font,
-        )
-        h_ai_radio.grid(row=0, column=1, padx=5)
-
-        h_ai_radio = tk.Radiobutton(
-            game_mode_frame,
-            text="AI-H",
-            variable=self.game_mode,
-            value="AI-H",
-            font=param_font,
-        )
-        h_ai_radio.grid(row=0, column=2, padx=5)
-
-        ai_ai_radio = tk.Radiobutton(
-            game_mode_frame, text="AI-AI", variable=self.game_mode, value="AI-AI", font=param_font
-        )
-        ai_ai_radio.grid(row=0, column=3, padx=5)
-
-        game_mode_frame.grid(row=2, column=0, columnspan=3)
-
-        # Add buttons for starting the game based on the selected mode
-        # start_game_button = tk.Button(
-        #    root, text="Start Game", font=param_font, command=self.start_game
-        # )
-        # start_game_button.grid(row=10, column=0, columnspan=6, pady=5)
-        
+    def init_params_row(self, root, param_font):
         max_time_frame = tk.Frame(root)
         max_time_label = tk.Label(
             max_time_frame, text="Max Time (seconds):", font=param_font
@@ -856,21 +818,53 @@ class GameGUI:
         alpha_beta_checkbox.grid(row=1, column=5, pady=5)
         self.alpha_beta_var.set(self.game.options.alpha_beta)  # Default to Alpha-Beta
 
-        row_shift = 5
-        col_shift = 2
+    def init_game_mode_row(self, root, param_font):
+         # Create radio buttons for game mode selection
+        game_mode_frame = tk.Frame(root)
+        h_h_radio = tk.Radiobutton(
+            game_mode_frame, 
+            text="H-H", 
+            variable=self.game_mode, 
+            value="H-H", 
+            font=param_font
+        )
+        h_h_radio.grid(row=0, column=0, padx=5)
 
+        h_ai_radio = tk.Radiobutton(
+            game_mode_frame,
+            text="H-AI",
+            variable=self.game_mode,
+            value="H-AI",
+            font=param_font,
+        )
+        h_ai_radio.grid(row=0, column=1, padx=5)
+
+        h_ai_radio = tk.Radiobutton(
+            game_mode_frame,
+            text="AI-H",
+            variable=self.game_mode,
+            value="AI-H",
+            font=param_font,
+        )
+        h_ai_radio.grid(row=0, column=2, padx=5)
+
+        ai_ai_radio = tk.Radiobutton(
+            game_mode_frame, text="AI-AI", variable=self.game_mode, value="AI-AI", font=param_font
+        )
+        ai_ai_radio.grid(row=0, column=3, padx=5)
+
+        game_mode_frame.grid(row=2, column=0, columnspan=3)
+
+    def init_board(self, root, param_font):
         restart_button = tk.Button(
             root, text="Restart Game", font=param_font, command=self.restart_game
         )
         restart_button.grid(row=3, column=0)
 
-        restart_button = tk.Button(
-            root,
-            text="Download Logs",
-            font=param_font,
-            command=self.console.download_logs,
-        )
-        restart_button.grid(row=0, column=7)
+        board_font = ("Arial", 12)
+        header_color = "lightblue"
+        row_shift = 5
+        col_shift = 2
 
         # Create board column header
         for col in range(col_shift, 5 + col_shift):
@@ -920,7 +914,6 @@ class GameGUI:
         self.selected_coord = None
         self.game.turns_played = 0
         self.turn_count = 0
-        self.game.turns_played = 0
         self.game.next_player = Player.Attacker
         self.game._attacker_has_ai = True
         self.game._defender_has_ai = True
@@ -994,10 +987,6 @@ class GameGUI:
         # Implement AI vs AI logic here
         self.game.options.game_type = GameType.CompVsComp
         print(self.game.options.game_type)
-
-    def on_button_click(self, row, col):
-        # Handle button clicks as before
-        pass
 
     def update_buttons(self):
         for row in range(5):
@@ -1097,6 +1086,15 @@ class Console:
 
     def __init__(self, root, game_gui):
         self.game_gui = game_gui
+
+        download_logs_button = tk.Button(
+            root,
+            text="Download Logs",
+            font=("Arial", 10),
+            command=self.download_logs,
+        )
+        download_logs_button.grid(row=0, column=7)
+
         self.log_console_frame = tk.Frame(root, width=25)
         scrollbar = tk.Scrollbar(self.log_console_frame, orient="vertical")
         scrollbar.pack(side="right", fill="y")
@@ -1129,7 +1127,7 @@ class Console:
                 attacker = "AI"
                 defender = "H"
 
-        msg = f"Timeout: {self.game_gui.game.options.max_time} s\nMax Turns: {self.game_gui.game.options.max_turns}\n{self.game_gui.game.options.game_type}\nMax Depth: {self.game_gui.game.options.max_depth}\nMin Depth: {self.game_gui.game.options.min_depth}\nAlpha-Beta: {self.game_gui.game.options.alpha_beta} \n\n Attacker: {attacker} Defender: {defender}\n\n{self.game_gui.game.get_board_config()}"
+        msg = f"Timeout: {self.game_gui.game.options.max_time} s\nMax Turns: {self.game_gui.game.options.max_turns}\nGame Type: {self.game_gui.game.options.game_type.name}\nMax Depth: {self.game_gui.game.options.max_depth}\nMin Depth: {self.game_gui.game.options.min_depth}\nAlpha-Beta: {self.game_gui.game.options.alpha_beta} \n\n Attacker: {attacker} Defender: {defender}\n\n{self.game_gui.game.get_board_config()}"
         self.insert_in_log(msg)
 
     def create_log(self, log_type, coord):
@@ -1167,7 +1165,7 @@ class Console:
             case 10:
                 msg += f"{affected_unit.type.name} moved from {self.game_gui.selected_coord} to {coord}."
             case 11:
-                msg += f"{self.game_gui.game.has_winner()} wins in {self.game_gui.turn_count} turns!"
+                msg += f"{self.game_gui.game.has_winner().name} wins in {self.game_gui.turn_count} turns!"
             case _:
                 msg += f"Wrong log type was passed."
 
@@ -1242,34 +1240,34 @@ def main():
     game_gui = GameGUI(root, game)
     root.mainloop()
 
-    # the main game loop
-    while True:
-        print()
-        print(game)
-        winner = game.has_winner()
-        if winner is not None:
-            print(f"{winner.name} wins!")
-            break
-        if game.options.game_type == GameType.AttackerVsDefender:
-            game.human_turn()
-        elif (
-            game.options.game_type == GameType.AttackerVsComp
-            and game.next_player == Player.Attacker
-        ):
-            game.human_turn()
-        elif (
-            game.options.game_type == GameType.CompVsDefender
-            and game.next_player == Player.Defender
-        ):
-            game.human_turn()
-        else:
-            player = game.next_player
-            move = game.computer_turn()
-            if move is not None:
-                game.post_move_to_broker(move)
-            else:
-                print("Computer doesn't know what to do!!!")
-                exit(1)
+    # the skeleton main game loop
+    # while True:
+    #     print()
+    #     print(game)
+    #     winner = game.has_winner()
+    #     if winner is not None:
+    #         print(f"{winner.name} wins!")
+    #         break
+    #     if game.options.game_type == GameType.AttackerVsDefender:
+    #         game.human_turn()
+    #     elif (
+    #         game.options.game_type == GameType.AttackerVsComp
+    #         and game.next_player == Player.Attacker
+    #     ):
+    #         game.human_turn()
+    #     elif (
+    #         game.options.game_type == GameType.CompVsDefender
+    #         and game.next_player == Player.Defender
+    #     ):
+    #         game.human_turn()
+    #     else:
+    #         player = game.next_player
+    #         move = game.computer_turn()
+    #         if move is not None:
+    #             game.post_move_to_broker(move)
+    #         else:
+    #             print("Computer doesn't know what to do!!!")
+    #             exit(1)
 
 
 ##############################################################################################################
