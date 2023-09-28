@@ -47,6 +47,7 @@ class GameType(Enum):
     CompVsDefender = 2
     CompVsComp = 3
 
+
 class LogType(Enum):
     SelectEmpty = 0
     NotAdjacent = 1
@@ -60,6 +61,7 @@ class LogType(Enum):
     Attack = 9
     Move = 10
     GameEnd = 11
+
 
 ##############################################################################################################
 
@@ -373,7 +375,7 @@ class Game:
 
         # Check if the source and destination coordinates are adjacent
         adjacent_coords = list(coords.src.iter_adjacent())
-        #print(adjacent_coords)
+        # print(adjacent_coords)
         if coords.dst not in adjacent_coords:
             print("Src and dst coords are not adjacent.")
             return False, LogType.NotAdjacent
@@ -389,10 +391,10 @@ class Game:
             dst_unit is not None
             and self.get(coords.src).player == self.get(coords.dst).player
         ):
-            if(dst_unit.health==9):
+            if dst_unit.health == 9:
                 print(f"{dst_unit.type.name} is at maximum health.")
                 return False, LogType.HealAtMax
-            elif(src_unit.repair_table[src_unit.type.value][dst_unit.type.value]<=0):
+            elif src_unit.repair_table[src_unit.type.value][dst_unit.type.value] <= 0:
                 print(f"{src_unit.type.name} cannot heal {dst_unit.type.name}.")
                 return False, LogType.TrivialHeal
             else:
@@ -405,34 +407,48 @@ class Game:
         ):
             print("Attacking Enemy Valid")
             return True, LogType.Attack
-        
-        src_is_ai_firewall_program = (src_unit.type.value == 0 
-           or src_unit.type.value == 3
-           or src_unit.type.value == 4)
+
+        src_is_ai_firewall_program = (
+            src_unit.type.value == 0
+            or src_unit.type.value == 3
+            or src_unit.type.value == 4
+        )
 
         # Need to verify that src_unit is not engaged in combat for relevant units
         if src_is_ai_firewall_program:
             for adj in adjacent_coords:
                 adjacent_unit = self.get(adj)
-                if(adjacent_unit is not None
-                   and adjacent_unit.player != self.next_player):
-                    print(f"{src_unit.type.name} is already engaged in combat. Cannot move.")
+                if (
+                    adjacent_unit is not None
+                    and adjacent_unit.player != self.next_player
+                ):
+                    print(
+                        f"{src_unit.type.name} is already engaged in combat. Cannot move."
+                    )
                     return False, LogType.EngagedInCombat
 
         if dst_unit is None:
             if src_is_ai_firewall_program:
-                if src_unit.player.value==0:
-                    if (coords.dst.row>coords.src.row
-                        or coords.dst.col>coords.src.col):
-                        print(f"{src_unit.player.name}'s {src_unit.type.name} cannot move that way.")
+                if src_unit.player.value == 0:
+                    if (
+                        coords.dst.row > coords.src.row
+                        or coords.dst.col > coords.src.col
+                    ):
+                        print(
+                            f"{src_unit.player.name}'s {src_unit.type.name} cannot move that way."
+                        )
                         return False, LogType.IllegalMove
                     else:
                         print("Move Valid")
                         return True, LogType.Move
                 else:
-                    if (coords.dst.row<coords.src.row
-                        or coords.dst.col<coords.src.col):
-                        print(f"{src_unit.player.name}'s {src_unit.type.name} cannot move that way.")
+                    if (
+                        coords.dst.row < coords.src.row
+                        or coords.dst.col < coords.src.col
+                    ):
+                        print(
+                            f"{src_unit.player.name}'s {src_unit.type.name} cannot move that way."
+                        )
                         return False, LogType.IllegalMove
                     else:
                         print("Move Valid")
@@ -453,7 +469,9 @@ class Game:
                     print("Self destruct Action")
                     # Self destroy Code here, self destruction should AOE everything around itself for 2 hp
                     self.mod_health(coords.src, -9)
-                    affected_coords = list(coords.src.iter_adjacent()) + list(coords.src.iter__diagonal())
+                    affected_coords = list(coords.src.iter_adjacent()) + list(
+                        coords.src.iter__diagonal()
+                    )
                     for coord in affected_coords:
                         self.mod_health(coord, -2)
 
@@ -462,7 +480,10 @@ class Game:
                     # Heal Ally code
                     print(self.get(coords.src).health)
                     print(self.get(coords.src).repair_amount(self.get(coords.dst)))
-                    self.mod_health(coords.dst, self.get(coords.src).repair_amount(self.get(coords.dst)))
+                    self.mod_health(
+                        coords.dst,
+                        self.get(coords.src).repair_amount(self.get(coords.dst)),
+                    )
                     print(self.get(coords.src).health)
 
                 elif self.get(coords.src).player != self.get(coords.dst).player:
@@ -470,11 +491,14 @@ class Game:
                     print(self.get(coords.src).health)
                     print(self.get(coords.src).damage_amount(self.get(coords.dst)))
                     dmg = -self.get(coords.dst).damage_amount(self.get(coords.src))
-                    self.mod_health(coords.dst, -self.get(coords.src).damage_amount(self.get(coords.dst)))
+                    self.mod_health(
+                        coords.dst,
+                        -self.get(coords.src).damage_amount(self.get(coords.dst)),
+                    )
                     self.mod_health(coords.src, dmg)
                     # Attack and enemy code here
                     # if dead = set coord src to None
-                    #self.set(coords.src, None)
+                    # self.set(coords.src, None)
 
             else:
                 self.set(coords.dst, self.get(coords.src))
@@ -496,7 +520,7 @@ class Game:
         output += "\n   "
         output += self.get_board_config()
         return output
-    
+
     def get_board_config(self) -> str:
         dim = self.options.dim
         coord = Coord()
@@ -520,7 +544,6 @@ class Game:
             output += "\n"
         return output
 
-
     def __str__(self) -> str:
         """Default string representation of a game."""
         return self.to_string()
@@ -528,7 +551,13 @@ class Game:
     def is_valid_coord(self, coord: Coord) -> bool:
         """Check if a Coord is valid within out board dimensions."""
         dim = self.options.dim
-        if coord is None or coord.row < 0 or coord.row >= dim or coord.col < 0 or coord.col >= dim:
+        if (
+            coord is None
+            or coord.row < 0
+            or coord.row >= dim
+            or coord.col < 0
+            or coord.col >= dim
+        ):
             return False
         return True
 
@@ -712,7 +741,6 @@ class Game:
 
 ##############################################################################################################
 class GameGUI:
-
     def __init__(self, root, game):
         self.root = root
         self.game = game
@@ -733,91 +761,147 @@ class GameGUI:
         board_font = ("Arial", 12)
         header_color = "lightblue"
 
-        # Add buttons for manual entry and other options
-        manual_entry_button = tk.Button(
-            root, text="Manual Entry (H-H)", font=param_font, command=self.manual_entry
-        )
-        manual_entry_button.grid(row=2, column=0, columnspan=2, pady=5)
+        # Create a variable to store the selected game mode
+        self.game_mode = tk.StringVar()
+        self.game_mode.set("H-H")  # Initialize with "H-H" selected
 
-        manual_ai_button = tk.Button(
-            root, text="Manual vs AI (H-AI / AI-H)", font=param_font, command=self.manual_vs_ai
+        # Create radio buttons for game mode selection
+        h_h_radio = tk.Radiobutton(
+            root, text="H-H", variable=self.game_mode, value="H-H", font=param_font
         )
-        manual_ai_button.grid(row=2, column=2, columnspan=2, pady=5)
+        h_h_radio.grid(row=2, column=0, columnspan=2, pady=5)
 
-        ai_vs_ai_button = tk.Button(
-            root, text="AI vs AI (AI-AI)", font=param_font, command=self.ai_vs_ai
+        h_ai_radio = tk.Radiobutton(
+            root,
+            text="H-AI",
+            variable=self.game_mode,
+            value="H-AI",
+            font=param_font,
         )
-        ai_vs_ai_button.grid(row=2, column=4, columnspan=2, pady=5)
+        h_ai_radio.grid(row=2, column=2, columnspan=2, pady=5)
+
+        h_ai_radio = tk.Radiobutton(
+            root,
+            text="AI-H",
+            variable=self.game_mode,
+            value="AI-H",
+            font=param_font,
+        )
+        h_ai_radio.grid(row=2, column=3, columnspan=1, pady=5)
+
+        ai_ai_radio = tk.Radiobutton(
+            root, text="AI-AI", variable=self.game_mode, value="AI-AI", font=param_font
+        )
+        ai_ai_radio.grid(row=2, column=4, columnspan=2, pady=5)
+
+        # Add buttons for starting the game based on the selected mode
+        # start_game_button = tk.Button(
+        #    root, text="Start Game", font=param_font, command=self.start_game
+        # )
+        # start_game_button.grid(row=10, column=0, columnspan=6, pady=5)
 
         max_time_frame = tk.Frame(root)
-        max_time_label = tk.Label(max_time_frame, text="Max Time (seconds):", font=param_font)
+        max_time_label = tk.Label(
+            max_time_frame, text="Max Time (seconds):", font=param_font
+        )
         max_time_label.grid(row=0, column=0)
         self.max_time_entry = tk.Entry(max_time_frame)
+        self.max_time_entry.insert(
+            0, self.game.options.max_time
+        )  # Set the default value default of options
         self.max_time_entry.grid(row=0, column=1)
-        max_time_frame.grid(row=1, column=0, columnspan=3, pady=5)
+        max_time_frame.grid(row=1, column=0, columnspan=3, pady=2)
 
         max_turns_frame = tk.Frame(root)
         max_turns_label = tk.Label(max_turns_frame, text="Max Turns:", font=param_font)
         max_turns_label.grid(row=0, column=0)
         self.max_turns_entry = tk.Entry(max_turns_frame)
+        self.max_turns_entry.insert(
+            0, self.game.options.max_turns
+        )  # Set the default value default of options
         self.max_turns_entry.grid(row=0, column=1)
-        max_turns_frame.grid(row=1, column=3, columnspan=2, pady=5)
+        max_turns_frame.grid(row=1, column=2, columnspan=2, pady=2)
 
-        alpha_beta_var = tk.BooleanVar()
+        max_depth_frame = tk.Frame(root)
+        max_depth_label = tk.Label(max_depth_frame, text="Max Depth:", font=param_font)
+        max_depth_label.grid(row=0, column=0)
+        self.max_depth_entry = tk.Entry(max_depth_frame)
+        self.max_depth_entry.insert(
+            0, self.game.options.max_depth
+        )  # Set the default value default of options
+        self.max_depth_entry.grid(row=0, column=1)
+        max_depth_frame.grid(row=1, column=3, columnspan=2, pady=2)
+
+        min_depth_frame = tk.Frame(root)
+        min_depth_label = tk.Label(min_depth_frame, text="Min Depth:", font=param_font)
+        min_depth_label.grid(row=0, column=0)
+        self.min_depth_entry = tk.Entry(min_depth_frame)
+        self.min_depth_entry.insert(
+            0, self.game.options.min_depth
+        )  # Set the default value default of options
+        self.min_depth_entry.grid(row=0, column=1)
+        min_depth_frame.grid(row=1, column=4, columnspan=2, pady=2)
+
+        self.alpha_beta_var = tk.BooleanVar()
         alpha_beta_checkbox = tk.Checkbutton(
-            root, text="Use Alpha-Beta", font=param_font, variable=alpha_beta_var
+            root, text="Alpha-Beta", font=param_font, variable=self.alpha_beta_var
         )
         alpha_beta_checkbox.grid(row=1, column=5, pady=5)
-        alpha_beta_var.set(False)  # Default to Alpha-Beta
+        self.alpha_beta_var.set(self.game.options.alpha_beta)  # Default to Alpha-Beta
 
         row_shift = 5
         col_shift = 2
-        
+
         restart_button = tk.Button(
             root, text="Restart Game", font=param_font, command=self.restart_game
         )
         restart_button.grid(row=3, column=0)
 
         restart_button = tk.Button(
-            root, text="Download Logs", font=param_font, command=self.console.download_logs
+            root,
+            text="Download Logs",
+            font=param_font,
+            command=self.console.download_logs,
         )
         restart_button.grid(row=0, column=7)
 
         # Create board column header
-        for col in range(col_shift, 5+col_shift):
+        for col in range(col_shift, 5 + col_shift):
             button = tk.Label(
-                    root,
-                    width=15,
-                    height=3,
-                    text=col-col_shift, 
-                    font=board_font,
-                    bg=header_color
-                )
+                root,
+                width=15,
+                height=3,
+                text=col - col_shift,
+                font=board_font,
+                bg=header_color,
+            )
             button.grid(row=3, column=col)
 
         # Create board row header
-        alphabet = ['A', 'B', 'C', 'D', 'E']
-        for row in range(row_shift, 5+row_shift):
+        alphabet = ["A", "B", "C", "D", "E"]
+        for row in range(row_shift, 5 + row_shift):
             button = tk.Label(
-                    root,
-                    width=14,
-                    height=4,
-                    text=alphabet[row-row_shift], 
-                    font=board_font,
-                    bg=header_color
-                )
+                root,
+                width=14,
+                height=4,
+                text=alphabet[row - row_shift],
+                font=board_font,
+                bg=header_color,
+            )
             button.grid(row=row, column=0)
 
         # Create a 5x5 grid of buttons
-        for row in range(row_shift, 5+row_shift):
+        for row in range(row_shift, 5 + row_shift):
             button_row = []
-            for col in range(col_shift, 5+col_shift):
+            for col in range(col_shift, 5 + col_shift):
                 button = tk.Button(
                     root,
                     width=14,
                     height=3,
                     font=board_font,
-                    command=lambda row=row, col=col: self.on_button_click(row-row_shift, col-col_shift),
+                    command=lambda row=row, col=col: self.on_button_click(
+                        row - row_shift, col - col_shift
+                    ),
                 )
                 button.grid(row=row, column=col)
                 button_row.append(button)
@@ -831,6 +915,21 @@ class GameGUI:
         self.game.next_player = Player.Attacker
         self.game._attacker_has_ai = True
         self.game._defender_has_ai = True
+        self.computer_options()
+
+        # Read values from entry widgets
+        max_time = float(self.max_time_entry.get())
+        max_turns = int(self.max_turns_entry.get())
+        max_depth = int(self.max_depth_entry.get())
+        min_depth = int(self.min_depth_entry.get())
+        alpha_beta = bool(self.alpha_beta_var.get())  # Retrieve alpha_beta_var value
+
+        # Set options in the game.options object
+        self.game.options.max_time = max_time
+        self.game.options.max_turns = max_turns
+        self.game.options.max_depth = max_depth
+        self.game.options.min_depth = min_depth
+        self.game.options.alpha_beta = alpha_beta  # Set alpha_beta
 
         self.game.reset_board()
         self.update_turn_label()
@@ -840,22 +939,55 @@ class GameGUI:
         self.console.logs.config(state=tk.DISABLED)
         self.console.create_initial_log()
 
+    def computer_options(self):
+        selected_mode = self.game_mode.get()
+        if selected_mode == "H-H":
+            # Start the game in H-H mode
+            msg = "Starting Game in: " + selected_mode
+            self.manual_entry()
+        elif selected_mode == "H-AI":
+            # Start the game in H-AI mode
+            msg = "Starting Game in: " + selected_mode
+            print(msg)
+            # self.insert_in_log(msg)
+            self.manual_vs_ai()
+        elif selected_mode == "AI-H":
+            # Start the game in H-AI mode
+            msg = "Starting Game in: " + selected_mode
+            print(msg)
+            # self.insert_in_log(msg)
+            self.ai_vs_manual()
+        elif selected_mode == "AI-AI":
+            # Start the game in AI-AI mode
+            msg = "Starting Game in: " + selected_mode
+            print(msg)
+            # self.insert_in_log(msg)
+            self.ai_vs_ai()
+
     def manual_entry(self):
         # Implement manual entry logic here
-        pass
+        self.game.options.game_type = GameType.AttackerVsDefender
+        print(self.game.options.game_type)
 
     def manual_vs_ai(self):
         # Implement manual vs AI logic here
-        pass
+        self.game.options.game_type = GameType.AttackerVsComp
+        print(self.game.options.game_type)
+
+    def ai_vs_manual(self):
+        # Implement manual vs AI logic here
+        self.game.options.game_type = GameType.CompVsDefender
+        print(self.game.options.game_type)
 
     def ai_vs_ai(self):
         # Implement AI vs AI logic here
-        pass
+        self.game.options.game_type = GameType.CompVsComp
+        print(self.game.options.game_type)
 
     def on_button_click(self, row, col):
         # Handle button clicks as before
         pass
-    
+
     def update_buttons(self):
         for row in range(5):
             for col in range(5):
@@ -877,10 +1009,10 @@ class GameGUI:
 
         if unit is not None and unit.player == self.game.next_player:
             print(f"{unit.player.name} selected {unit.type.name} at {coord}")
-            if self.selected_coord is None: # Selecting unit
+            if self.selected_coord is None:  # Selecting unit
                 self.selected_coord = coord
                 self.buttons[row][col].config(bg="yellow")
-            else: # Healing or self-destruct unit
+            else:  # Healing or self-destruct unit
                 print("Moving 2")
                 move = CoordPair(self.selected_coord, coord)
                 success, result = self.game.human_turn(move)
@@ -897,7 +1029,7 @@ class GameGUI:
                 else:
                     self.console.create_log(result, coord)
                     self.reset_turn(result)
-        elif self.selected_coord is not None: # Attacking enemy unit or moving
+        elif self.selected_coord is not None:  # Attacking enemy unit or moving
             print("Moving 3")
             move = CoordPair(self.selected_coord, coord)
             success, result = self.game.human_turn(move)
@@ -924,19 +1056,27 @@ class GameGUI:
     def update_turn_label(self):
         # Update the turn label with the current turn count and player's turn
         player_turn = (
-            "Attacker's Turn" if self.game.next_player == Player.Attacker else "Defender's Turn"
+            "Attacker's Turn"
+            if self.game.next_player == Player.Attacker
+            else "Defender's Turn"
         )
         self.turn_label.config(text=f"Turn: {self.turn_count+1}\n({player_turn})")
 
     def reset_turn(self, log_type):
-        if log_type.value<6:
-            if self.game.get(self.selected_coord).player.value==0:
-                self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="red")
+        if log_type.value < 6:
+            if self.game.get(self.selected_coord).player.value == 0:
+                self.buttons[self.selected_coord.row][self.selected_coord.col].config(
+                    bg="red"
+                )
             else:
-                self.buttons[self.selected_coord.row][self.selected_coord.col].config(bg="green")
+                self.buttons[self.selected_coord.row][self.selected_coord.col].config(
+                    bg="green"
+                )
         self.selected_coord = None
 
+
 ##############################################################################################################
+
 
 ##############################################################################################################
 class Console:
@@ -947,9 +1087,14 @@ class Console:
     def __init__(self, root, game_gui):
         self.game_gui = game_gui
         self.log_console_frame = tk.Frame(root, width=25)
-        scrollbar= tk.Scrollbar(self.log_console_frame, orient="vertical")
+        scrollbar = tk.Scrollbar(self.log_console_frame, orient="vertical")
         scrollbar.pack(side="right", fill="y")
-        self.logs = tk.Text(self.log_console_frame, width=50, yscrollcommand=scrollbar.set, state=tk.DISABLED)
+        self.logs = tk.Text(
+            self.log_console_frame,
+            width=50,
+            yscrollcommand=scrollbar.set,
+            state=tk.DISABLED,
+        )
         self.logs.pack()
         scrollbar.config(command=self.logs.yview)
         self.create_initial_log()
@@ -957,7 +1102,23 @@ class Console:
 
     def create_initial_log(self):
         # TODO for D2: add if/else to add AI-specific params
-        msg = f"Timeout: {self.game_gui.game.options.max_time} s\nMax Turns: {self.game_gui.game.options.max_turns}\nAttacker: H, Defender: H\n\n{self.game_gui.game.get_board_config()}"
+        attacker = ""
+        defender = ""
+        match self.game_gui.game.options.game_type:
+            case GameType.AttackerVsDefender:
+                attacker = "H"
+                defender = "H"
+            case GameType.CompVsComp:
+                attacker = "AI"
+                defender = "AI"
+            case GameType.AttackerVsComp:
+                attacker = "H"
+                defender = "AI"
+            case GameType.CompVsDefender:
+                attacker = "AI"
+                defender = "H"
+
+        msg = f"Timeout: {self.game_gui.game.options.max_time} s\nMax Turns: {self.game_gui.game.options.max_turns}\n{self.game_gui.game.options.game_type}\nMax Depth: {self.game_gui.game.options.max_depth}\nMax Depth: {self.game_gui.game.options.min_depth}\nAlpha-Beta: {self.game_gui.game.options.alpha_beta} \n\n Attacker: {attacker} Defender: {defender}\n\n{self.game_gui.game.get_board_config()}"
         self.insert_in_log(msg)
 
     def create_log(self, log_type, coord):
@@ -965,7 +1126,7 @@ class Console:
         selected_unit = ""
         if log_type.value != 11:
             selected_unit = self.game_gui.game.get(self.game_gui.selected_coord)
-            if log_type.value<=6:
+            if log_type.value <= 6:
                 msg += f"(Turn #{self.game_gui.turn_count+1}) {self.game_gui.game.next_player.name}: Invalid Move - "
             else:
                 msg += f"(Turn #{self.game_gui.turn_count}) {self.game_gui.game.next_player.next().name}: "
@@ -999,14 +1160,14 @@ class Console:
             case _:
                 msg += f"Wrong log type was passed."
 
-        if log_type.value<=6:
+        if log_type.value <= 6:
             messagebox.showerror("Invalid Move", msg)
         else:
             msg += f"\n{self.game_gui.game.get_board_config()}"
         self.insert_in_log(msg)
-        if log_type.value==11:
+        if log_type.value == 11:
             self.download_logs()
-        
+
     def insert_in_log(self, msg):
         self.logs.config(state=tk.NORMAL)
         self.logs.insert(tk.END, f"{msg}\n\n")
@@ -1014,12 +1175,17 @@ class Console:
         self.logs.config(state=tk.DISABLED)
 
     def download_logs(self):
-        file = open(f"gameTrace-{self.game_gui.game.options.alpha_beta}-{self.game_gui.game.options.max_time}-{self.game_gui.game.options.max_turns}.txt", "w")
+        file = open(
+            f"gameTrace-{self.game_gui.game.options.alpha_beta}-{self.game_gui.game.options.max_time}-{self.game_gui.game.options.max_turns}.txt",
+            "w",
+        )
         file.write(self.logs.get("1.0", tk.END))
         file.close()
         messagebox.showinfo("Info", "Game trace downloaded successfully.")
 
+
 ##############################################################################################################
+
 
 def main():
     # parse command line arguments
