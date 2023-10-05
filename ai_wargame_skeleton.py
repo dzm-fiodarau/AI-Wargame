@@ -363,49 +363,56 @@ class Game:
 
     def is_valid_move(self, coords: CoordPair) -> (bool, LogType):
         """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
-        print(coords)
-        print("inside is_valid_move() function")
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
-            print("Coords outside board dimensions.")
+            # print("Coords outside board dimensions.")
             return False, None
 
-        if coords.src == coords.dst:
-            print("Self destruct Valid")
+        src_unit = self.get(coords.src)
+        dst_unit = self.get(coords.dst)
+
+        if src_unit is None:
+            return False, None
+
+        if src_unit.player != self.next_player:
+            return False, None
+
+        if coords.src == coords.dst and src_unit.player == self.next_player:
+            # print("Self destruct Valid")
+            # print(self.next_player)
+            # print(src_unit.player)
             return True, LogType.SelfDestruct
 
         # Check if the source and destination coordinates are adjacent
         adjacent_coords = list(coords.src.iter_adjacent())
         # print(adjacent_coords)
         if coords.dst not in adjacent_coords:
-            print("Src and dst coords are not adjacent.")
+            # print("Src and dst coords are not adjacent.")
             return False, LogType.NotAdjacent
 
         # Seems unnecessary
         # if unit is None or unit.player != self.next_player:
         #     print("No unit to move or wrong player's turn")
         #     return False
-        src_unit = self.get(coords.src)
-        dst_unit = self.get(coords.dst)
 
         if (
             dst_unit is not None
             and self.get(coords.src).player == self.get(coords.dst).player
         ):
             if dst_unit.health == 9:
-                print(f"{dst_unit.type.name} is at maximum health.")
+                # print(f"{dst_unit.type.name} is at maximum health.")
                 return False, LogType.HealAtMax
             elif src_unit.repair_table[src_unit.type.value][dst_unit.type.value] <= 0:
-                print(f"{src_unit.type.name} cannot heal {dst_unit.type.name}.")
+                # print(f"{src_unit.type.name} cannot heal {dst_unit.type.name}.")
                 return False, LogType.TrivialHeal
             else:
-                print("Healing Valid")
+                # print("Healing Valid")
                 return True, LogType.Heal
 
         if (
             dst_unit is not None
             and self.get(coords.src).player != self.get(coords.dst).player
         ):
-            print("Attacking Enemy Valid")
+            # print("Attacking Enemy Valid")
             return True, LogType.Attack
 
         src_is_ai_firewall_program = (
@@ -439,7 +446,7 @@ class Game:
                         )
                         return False, LogType.IllegalMove
                     else:
-                        print("Move Valid")
+                        # print("Move Valid")
                         return True, LogType.Move
                 else:
                     if (
@@ -451,10 +458,10 @@ class Game:
                         )
                         return False, LogType.IllegalMove
                     else:
-                        print("Move Valid")
+                        # print("Move Valid")
                         return True, LogType.Move
             else:
-                print("Move Valid")
+                # print("Move Valid")
                 return True, LogType.Move
         else:
             print("Something is wrong")
@@ -466,7 +473,7 @@ class Game:
         if is_valid:
             if self.get(coords.dst) is not None:
                 if coords.src == coords.dst:
-                    print("Self destruct Action")
+                    # print("Self destruct Action")
                     # Self destroy Code here, self destruction should AOE everything around itself for 2 hp
                     self.mod_health(coords.src, -9)
                     affected_coords = list(coords.src.iter_adjacent()) + list(
@@ -476,7 +483,7 @@ class Game:
                         self.mod_health(coord, -2)
 
                 elif self.get(coords.src).player == self.get(coords.dst).player:
-                    print("Healing Ally Action")
+                    # print("Healing Ally Action")
                     # Heal Ally code
                     print(self.get(coords.src).health)
                     print(self.get(coords.src).repair_amount(self.get(coords.dst)))
@@ -487,7 +494,7 @@ class Game:
                     print(self.get(coords.src).health)
 
                 elif self.get(coords.src).player != self.get(coords.dst).player:
-                    print("Attacking Enemy Action")
+                    # print("Attacking Enemy Action")
                     print(self.get(coords.src).health)
                     print(self.get(coords.src).damage_amount(self.get(coords.dst)))
                     dmg = -self.get(coords.dst).damage_amount(self.get(coords.src))
@@ -605,16 +612,19 @@ class Game:
                     print("The move is not valid! Try again.")
                     return False, result
 
-    def computer_turn(self) -> CoordPair | None:
+    def computer_turn(self) -> (bool, LogType, CoordPair | None):
         """Computer plays a move."""
         mv = self.suggest_move()
+        print(f"Suggested Move: {mv} + {self.next_player}")
         if mv is not None:
             (success, result) = self.perform_move(mv)
             if success:
                 print(f"Computer {self.next_player.name}: ", end="")
                 print(result)
+
                 self.next_turn()
-        return mv
+                print(f"TURN to PLAY: {self.next_player.name}")
+        return True, result, mv
 
     def player_units(self, player: Player) -> Iterable[Tuple[Coord, Unit]]:
         """Iterates over all units belonging to a player."""
@@ -663,14 +673,126 @@ class Game:
         else:
             return (0, None, 0)
 
+    def heuristic_e0(self, current_player):
+        # Initialize counts for each unit type for both players
+        vp1, tp1, fp1, pp1, aip1 = 0, 0, 0, 0, 0
+        vp2, tp2, fp2, pp2, aip2 = 0, 0, 0, 0, 0
+
+        # Loop through the game board
+        for row in self.board:
+            for unit in row:
+                if unit is not None and unit.is_alive():
+                    if unit.player == Player.Attacker:
+                        if unit.type == UnitType.Virus:
+                            vp1 += 1
+                        elif unit.type == UnitType.Tech:
+                            tp1 += 1
+                        elif unit.type == UnitType.Firewall:
+                            fp1 += 1
+                        elif unit.type == UnitType.Program:
+                            pp1 += 1
+                        elif unit.type == UnitType.AI:
+                            aip1 += 1
+                    elif unit.player == Player.Defender:
+                        if unit.type == UnitType.Virus:
+                            vp2 += 1
+                        elif unit.type == UnitType.Tech:
+                            tp2 += 1
+                        elif unit.type == UnitType.Firewall:
+                            fp2 += 1
+                        elif unit.type == UnitType.Program:
+                            pp2 += 1
+                        elif unit.type == UnitType.AI:
+                            aip2 += 1
+
+            # Calculate the heuristic score formula
+        if current_player == Player.Attacker:
+            score = 3 * (vp1 + tp1 + fp1 + pp1 + 9999 * aip1) - 3 * (
+                vp2 + tp2 + fp2 + pp2 + 9999 * aip2
+            )
+        else:
+            score = 3 * (vp2 + tp2 + fp2 + pp2 + 9999 * aip2) - 3 * (
+                vp1 + tp1 + fp1 + pp1 + 9999 * aip1
+            )
+
+        # print(f"Next player: {next_player}  heuristic cost at node: {score}")
+        return score
+
+    def minmax(
+        self, depth, current_player, next_player
+    ) -> Tuple[int, CoordPair | None, float]:
+        if (
+            depth == 0
+            or self._attacker_has_ai == False
+            or self._defender_has_ai == False
+        ):
+            # Calculate and return the heuristic value for this node
+            heuristic_value = self.heuristic_e0(current_player)
+            # print(f"heuristic Value {heuristic_value}")
+            return heuristic_value, None
+
+        if current_player == next_player:  # (Maximizer)
+            max_eval = MIN_HEURISTIC_SCORE
+            best_move = None
+
+            for move in self.move_candidates():
+                print(f"move candadits: {move}")
+                game_clone = self.clone()
+                # Make the move in the copied game state
+                (success, result) = game_clone.perform_move(move)
+                if success:
+                    game_clone.next_turn()
+
+                    # Recursively evaluate the move in the copied game state
+                    eval, _ = game_clone.minmax(
+                        depth - 1, current_player, game_clone.next_player
+                    )
+
+                    # Update max_eval and best_move if needed
+                    if eval >= max_eval:
+                        max_eval = eval
+                        best_move = move
+                        print(f"MAX player: {current_player}")
+                        print(f"MAX Score: {max_eval}")
+                        print(f"Best Move: {best_move}")
+
+            return max_eval, best_move
+
+        else:  # (Minimizer)
+            min_eval = MAX_HEURISTIC_SCORE
+            best_move = None
+
+            for move in self.move_candidates():
+                game_clone = self.clone()
+                # Make the move in the copied game state
+                (success, result) = game_clone.perform_move(move)
+                # print(f"Min: {depth}")
+                if success:
+                    # Recursively evaluate the move in the copied game state
+                    game_clone.next_turn()
+
+                    eval, _ = game_clone.minmax(
+                        depth - 1, current_player, game_clone.next_player
+                    )
+
+                    # Update min_eval and best_move if needed
+                    if eval < min_eval:
+                        min_eval = eval
+                        best_move = move
+
+            return min_eval, best_move
+
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.now()
-        (score, move, avg_depth) = self.random_move()
+        (score, move) = self.minmax(
+            self.options.max_depth, self.next_player, self.next_player
+        )
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
         print(f"Heuristic score: {score}")
-        print(f"Average recursive depth: {avg_depth:0.1f}")
+        print(f"Move: {move}")
+        # print(f"Average recursive depth: {avg_depth:0.1f}")
         print(f"Evals per depth: ", end="")
         for k in sorted(self.stats.evaluations_per_depth.keys()):
             print(f"{k}:{self.stats.evaluations_per_depth[k]} ", end="")
@@ -819,14 +941,14 @@ class GameGUI:
         self.alpha_beta_var.set(self.game.options.alpha_beta)  # Default to Alpha-Beta
 
     def init_game_mode_row(self, root, param_font):
-         # Create radio buttons for game mode selection
+        # Create radio buttons for game mode selection
         game_mode_frame = tk.Frame(root)
         h_h_radio = tk.Radiobutton(
-            game_mode_frame, 
-            text="H-H", 
-            variable=self.game_mode, 
-            value="H-H", 
-            font=param_font
+            game_mode_frame,
+            text="H-H",
+            variable=self.game_mode,
+            value="H-H",
+            font=param_font,
         )
         h_h_radio.grid(row=0, column=0, padx=5)
 
@@ -849,7 +971,11 @@ class GameGUI:
         h_ai_radio.grid(row=0, column=2, padx=5)
 
         ai_ai_radio = tk.Radiobutton(
-            game_mode_frame, text="AI-AI", variable=self.game_mode, value="AI-AI", font=param_font
+            game_mode_frame,
+            text="AI-AI",
+            variable=self.game_mode,
+            value="AI-AI",
+            font=param_font,
         )
         ai_ai_radio.grid(row=0, column=3, padx=5)
 
@@ -917,7 +1043,6 @@ class GameGUI:
         self.game.next_player = Player.Attacker
         self.game._attacker_has_ai = True
         self.game._defender_has_ai = True
-        self.computer_options()
 
         # Read values from entry widgets
         max_time = float(self.max_time_entry.get())
@@ -942,6 +1067,7 @@ class GameGUI:
         self.console.logs.delete("1.0", tk.END)
         self.console.logs.config(state=tk.DISABLED)
         self.console.create_initial_log()
+        self.computer_options()
 
     def computer_options(self):
         selected_mode = self.game_mode.get()
@@ -987,6 +1113,28 @@ class GameGUI:
         # Implement AI vs AI logic here
         self.game.options.game_type = GameType.CompVsComp
         print(self.game.options.game_type)
+        i = 0
+        while True or i < self.game.options.max_turns:
+            if self.game.is_finished():
+                winner = self.game.has_winner()
+                self.console.create_log(LogType.GameEnd, coord.dst, coord.src)
+                messagebox.showinfo("Game Over", f"{winner.name} wins!")
+                break
+            success, result, coord = self.game.computer_turn()
+            print(coord)
+            print(self.game.next_player)
+            print()
+            if success:
+                self.turn_count += 1  # Increment turn count
+                self.update_buttons()
+                self.update_turn_label()  # Update the turn label
+                self.console.create_log(result, coord.dst, coord.src)
+                i = i + 1
+
+            else:
+                self.console.create_log(result, coord.dst, coord.src)
+                print("Computer doesnt know what to do")
+                break
 
     def update_buttons(self):
         for row in range(5):
@@ -1016,41 +1164,45 @@ class GameGUI:
                 print("Moving 2")
                 move = CoordPair(self.selected_coord, coord)
                 success, result = self.game.human_turn(move)
+                # success, result = self.game.computer_turn()
                 if success:
                     self.update_buttons()
                     self.turn_count += 1  # Increment turn count
                     self.update_turn_label()  # Update the turn label
-                    self.console.create_log(result, coord)
+                    self.console.create_log(result, coord, self.selected_coord)
                     self.selected_coord = None
                     if self.game.has_winner() is not None:
                         winner = self.game.has_winner()
-                        self.console.create_log(LogType.GameEnd, coord)
+                        self.console.create_log(
+                            LogType.GameEnd, coord, self.selected_coord
+                        )
                         messagebox.showinfo("Game Over", f"{winner.name} wins!")
                 else:
-                    self.console.create_log(result, coord)
+                    self.console.create_log(result, coord, self.selected_coord)
                     self.reset_turn(result)
         elif self.selected_coord is not None:  # Attacking enemy unit or moving
             print("Moving 3")
             move = CoordPair(self.selected_coord, coord)
             success, result = self.game.human_turn(move)
+
             if success:
                 self.update_buttons()
                 self.turn_count += 1  # Increment turn count
                 self.update_turn_label()  # Update the turn label
-                self.console.create_log(result, coord)
+                self.console.create_log(result, coord, self.selected_coord)
                 self.selected_coord = None
                 if self.game.has_winner() is not None:
                     winner = self.game.has_winner()
-                    self.console.create_log(LogType.GameEnd, coord)
+                    self.console.create_log(LogType.GameEnd, coord, self.selected_coord)
                     messagebox.showinfo("Game Over", f"{winner.name} wins!")
             else:
                 self.console.create_log(result, coord)
                 self.reset_turn(result)
         else:
             if unit is not None:
-                self.console.create_log(LogType.OthersTurn, coord)
+                self.console.create_log(LogType.OthersTurn, coord, self.selected_coord)
             else:
-                self.console.create_log(LogType.SelectEmpty, coord)
+                self.console.create_log(LogType.SelectEmpty, coord, self.selected_coord)
             self.reset_turn(LogType.SelectEmpty)
 
     def update_turn_label(self):
@@ -1130,40 +1282,44 @@ class Console:
         msg = f"Timeout: {self.game_gui.game.options.max_time} s\nMax Turns: {self.game_gui.game.options.max_turns}\nGame Type: {self.game_gui.game.options.game_type.name}\nMax Depth: {self.game_gui.game.options.max_depth}\nMin Depth: {self.game_gui.game.options.min_depth}\nAlpha-Beta: {self.game_gui.game.options.alpha_beta} \n\n Attacker: {attacker} Defender: {defender}\n\n{self.game_gui.game.get_board_config()}"
         self.insert_in_log(msg)
 
-    def create_log(self, log_type, coord):
+    def create_log(self, log_type, coord_dst, coord_src):
         msg = ""
         selected_unit = ""
         if log_type.value != 11:
-            selected_unit = self.game_gui.game.get(self.game_gui.selected_coord)
+            selected_unit = coord_src
             if log_type.value <= 6:
                 msg += f"(Turn #{self.game_gui.turn_count+1}) {self.game_gui.game.next_player.name}: Invalid Move - "
             else:
                 msg += f"(Turn #{self.game_gui.turn_count}) {self.game_gui.game.next_player.next().name}: "
-        affected_unit = self.game_gui.game.get(coord)
+        affected_unit = self.game_gui.game.get(coord_dst)
 
         match log_type.value:
             case 0:
-                msg += f"There is no unit on {coord}."
+                msg += f"There is no unit on {coord_dst}."
             case 1:
-                msg += f"{coord} is not adjacent to {self.game_gui.selected_coord}."
+                msg += f"{coord_dst} is not adjacent to {coord_src}."
             case 2:
-                msg += f"{affected_unit.type.name} ({coord}) is already at max health."
+                msg += (
+                    f"{affected_unit.type.name} ({coord_dst}) is already at max health."
+                )
             case 3:
                 msg += f"A {affected_unit.type.name} cannot be healed by a {selected_unit.type.name}."
             case 4:
-                msg += f"{selected_unit.type.name} ({self.game_gui.selected_coord}) is already engaged in combat."
+                msg += f"{selected_unit.type.name} ({coord_src}) is already engaged in combat."
             case 5:
                 msg += f"{selected_unit.player.name}'s {selected_unit.type.name} cannot move in that direction."
             case 6:
                 msg += f"You can not select the other's player unit."
             case 7:
-                msg += f"Unit on {coord} self_desctructed."
+                msg += f"Unit on {coord_dst} self_desctructed."
             case 8:
-                msg += f"{selected_unit.type.name} ({self.game_gui.selected_coord}) healed {affected_unit.type.name} ({coord})."
+                msg += f"{selected_unit.type.name} ({coord_src}) healed {affected_unit.type.name} ({coord_dst})."
             case 9:
-                msg += f"Attack from {self.game_gui.selected_coord} to {coord}."
+                msg += f"Attack from {coord_src} to {coord_dst}."
             case 10:
-                msg += f"{affected_unit.type.name} moved from {self.game_gui.selected_coord} to {coord}."
+                msg += (
+                    f"{affected_unit.type.name} moved from {coord_src} to {coord_dst}."
+                )
             case 11:
                 msg += f"{self.game_gui.game.has_winner().name} wins in {self.game_gui.turn_count} turns!"
             case _:
