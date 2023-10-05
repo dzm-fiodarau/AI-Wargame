@@ -782,12 +782,91 @@ class Game:
 
             return min_eval, best_move
 
+    def minmax_alphabeta(
+        self, depth, current_player, next_player, alpha, beta
+    ) -> Tuple[int, CoordPair | None, float]:
+        if (
+            depth == 0
+            or self._attacker_has_ai == False
+            or self._defender_has_ai == False
+        ):
+            # Calculate and return the heuristic value for this node
+            heuristic_value = self.heuristic_e0(current_player)
+            return heuristic_value, None
+
+        if current_player == next_player:  # Maximizer
+            max_eval = MIN_HEURISTIC_SCORE
+            best_move = None
+
+            for move in self.move_candidates():
+                game_clone = self.clone()
+                (success, result) = game_clone.perform_move(move)
+                if success:
+                    game_clone.next_turn()
+
+                    # Recursively evaluate the move in the copied game state
+                    eval, _ = game_clone.minmax_alphabeta(
+                        depth - 1, current_player, game_clone.next_player, alpha, beta
+                    )
+
+                    # Update max_eval and best_move if needed
+                    if eval >= max_eval:
+                        max_eval = eval
+                        best_move = move
+
+                    # Update alpha
+                    alpha = max(alpha, eval)
+
+                    # Perform alpha-beta pruning
+                    if beta <= alpha:
+                        break
+
+            return max_eval, best_move
+
+        else:  # Minimizer
+            min_eval = MAX_HEURISTIC_SCORE
+            best_move = None
+
+            for move in self.move_candidates():
+                game_clone = self.clone()
+                (success, result) = game_clone.perform_move(move)
+                if success:
+                    game_clone.next_turn()
+
+                    # Recursively evaluate the move in the copied game state
+                    eval, _ = game_clone.minmax_alphabeta(
+                        depth - 1, current_player, game_clone.next_player, alpha, beta
+                    )
+
+                    # Update min_eval and best_move if needed
+                    if eval < min_eval:
+                        min_eval = eval
+                        best_move = move
+
+                    # Update beta
+                    beta = min(beta, eval)
+
+                    # Perform alpha-beta pruning
+                    if beta <= alpha:
+                        break
+
+            return min_eval, best_move
+
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.now()
-        (score, move) = self.minmax(
-            self.options.max_depth, self.next_player, self.next_player
-        )
+        if self.options.alpha_beta:
+            (score, move) = self.minmax_alphabeta(
+                self.options.max_depth,
+                self.next_player,
+                self.next_player,
+                MIN_HEURISTIC_SCORE,
+                MAX_HEURISTIC_SCORE,
+            )
+        else:
+            (score, move) = self.minmax(
+                self.options.max_depth, self.next_player, self.next_player
+            )
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
         print(f"Heuristic score: {score}")
@@ -1203,6 +1282,7 @@ class GameGUI:
     def game_AI_turn_function(self, success, result, coord):
         if success:
             self.update_buttons()
+            self.turn_count += 1  # Increment turn count
             self.update_turn_label()  # Update the turn label
             self.console.create_log(result, coord.dst, coord.src)
 
