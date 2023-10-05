@@ -1107,7 +1107,9 @@ class GameGUI:
     def ai_vs_manual(self):
         # Implement manual vs AI logic here
         self.game.options.game_type = GameType.CompVsDefender
-        # print(self.game.options.game_type)
+        success2, result2, coord2 = self.game.computer_turn()
+        self.game_AI_turn_function(success2, result2, coord2)
+        print(self.game.options.game_type)
 
     def ai_vs_ai(self):
         # Implement AI vs AI logic here
@@ -1160,14 +1162,20 @@ class GameGUI:
                 move = CoordPair(self.selected_coord, coord)
                 success, result = self.game.human_turn(move)
                 self.game_manual_turn_function(success, result, coord)
-                if self.game.options.game_type == GameType.AttackerVsComp:
+                if (
+                    self.game.options.game_type == GameType.AttackerVsComp
+                    or self.game.options.game_type == GameType.CompVsDefender
+                ):
                     success2, result2, coord2 = self.game.computer_turn()
-                    self.game_AI_turn_function(success2, result2, move)
+                    self.game_AI_turn_function(success2, result2, coord2)
         elif self.selected_coord is not None:  # Attacking enemy unit or moving
             move = CoordPair(self.selected_coord, coord)
             success, result = self.game.human_turn(move)
             self.game_manual_turn_function(success, result, coord)
-            if self.game.options.game_type == GameType.AttackerVsComp:
+            if (
+                self.game.options.game_type == GameType.AttackerVsComp
+                or self.game.options.game_type == GameType.CompVsDefender
+            ):
                 success2, result2, coord2 = self.game.computer_turn()
                 self.game_AI_turn_function(success2, result2, coord2)
         else:
