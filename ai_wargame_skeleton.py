@@ -1097,22 +1097,22 @@ class GameGUI:
     def manual_entry(self):
         # Implement manual entry logic here
         self.game.options.game_type = GameType.AttackerVsDefender
-        print(self.game.options.game_type)
+        # print(self.game.options.game_type)
 
     def manual_vs_ai(self):
         # Implement manual vs AI logic here
         self.game.options.game_type = GameType.AttackerVsComp
-        print(self.game.options.game_type)
+        # print(self.game.options.game_type)
 
     def ai_vs_manual(self):
         # Implement manual vs AI logic here
         self.game.options.game_type = GameType.CompVsDefender
-        print(self.game.options.game_type)
+        # print(self.game.options.game_type)
 
     def ai_vs_ai(self):
         # Implement AI vs AI logic here
         self.game.options.game_type = GameType.CompVsComp
-        print(self.game.options.game_type)
+        # print(self.game.options.game_type)
         i = 0
         while True or i < self.game.options.max_turns:
             if self.game.is_finished():
@@ -1121,9 +1121,6 @@ class GameGUI:
                 messagebox.showinfo("Game Over", f"{winner.name} wins!")
                 break
             success, result, coord = self.game.computer_turn()
-            print(coord)
-            print(self.game.next_player)
-            print()
             if success:
                 self.turn_count += 1  # Increment turn count
                 self.update_buttons()
@@ -1156,54 +1153,54 @@ class GameGUI:
         unit = self.game.get(coord)
 
         if unit is not None and unit.player == self.game.next_player:
-            print(f"{unit.player.name} selected {unit.type.name} at {coord}")
             if self.selected_coord is None:  # Selecting unit
                 self.selected_coord = coord
                 self.buttons[row][col].config(bg="yellow")
             else:  # Healing or self-destruct unit
-                print("Moving 2")
                 move = CoordPair(self.selected_coord, coord)
                 success, result = self.game.human_turn(move)
-                # success, result = self.game.computer_turn()
-                if success:
-                    self.update_buttons()
-                    self.turn_count += 1  # Increment turn count
-                    self.update_turn_label()  # Update the turn label
-                    self.console.create_log(result, coord, self.selected_coord)
-                    self.selected_coord = None
-                    if self.game.has_winner() is not None:
-                        winner = self.game.has_winner()
-                        self.console.create_log(
-                            LogType.GameEnd, coord, self.selected_coord
-                        )
-                        messagebox.showinfo("Game Over", f"{winner.name} wins!")
-                else:
-                    self.console.create_log(result, coord, self.selected_coord)
-                    self.reset_turn(result)
+                self.game_manual_turn_function(success, result, coord)
+                if self.game.options.game_type == GameType.AttackerVsComp:
+                    success2, result2, coord2 = self.game.computer_turn()
+                    self.game_AI_turn_function(success2, result2, move)
         elif self.selected_coord is not None:  # Attacking enemy unit or moving
-            print("Moving 3")
             move = CoordPair(self.selected_coord, coord)
             success, result = self.game.human_turn(move)
-
-            if success:
-                self.update_buttons()
-                self.turn_count += 1  # Increment turn count
-                self.update_turn_label()  # Update the turn label
-                self.console.create_log(result, coord, self.selected_coord)
-                self.selected_coord = None
-                if self.game.has_winner() is not None:
-                    winner = self.game.has_winner()
-                    self.console.create_log(LogType.GameEnd, coord, self.selected_coord)
-                    messagebox.showinfo("Game Over", f"{winner.name} wins!")
-            else:
-                self.console.create_log(result, coord)
-                self.reset_turn(result)
+            self.game_manual_turn_function(success, result, coord)
+            if self.game.options.game_type == GameType.AttackerVsComp:
+                success2, result2, coord2 = self.game.computer_turn()
+                self.game_AI_turn_function(success2, result2, coord2)
         else:
             if unit is not None:
                 self.console.create_log(LogType.OthersTurn, coord, self.selected_coord)
             else:
                 self.console.create_log(LogType.SelectEmpty, coord, self.selected_coord)
             self.reset_turn(LogType.SelectEmpty)
+
+    def game_manual_turn_function(self, success, result, coord):
+        if success:
+            self.update_buttons()
+            self.turn_count += 1  # Increment turn count
+            self.update_turn_label()  # Update the turn label
+            self.console.create_log(result, coord, self.selected_coord)
+            self.selected_coord = None
+            if self.game.has_winner() is not None:
+                winner = self.game.has_winner()
+                self.console.create_log(LogType.GameEnd, coord, self.selected_coord)
+                messagebox.showinfo("Game Over", f"{winner.name} wins!")
+        else:
+            self.console.create_log(result, coord)
+            self.reset_turn(result)
+
+    def game_AI_turn_function(self, success, result, coord):
+        if success:
+            self.update_buttons()
+            self.update_turn_label()  # Update the turn label
+            self.console.create_log(result, coord.dst, coord.src)
+
+        else:
+            self.console.create_log(result, coord.dst, coord.src)
+            print("Computer doesnt know what to do")
 
     def update_turn_label(self):
         # Update the turn label with the current turn count and player's turn
