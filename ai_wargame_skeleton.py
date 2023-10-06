@@ -267,6 +267,7 @@ class Options:
     max_turns: int | None = 100
     randomize_moves: bool = True
     broker: str | None = None
+    heuristic: str | None = 0
 
 
 ##############################################################################################################
@@ -717,6 +718,12 @@ class Game:
         # print(f"Next player: {next_player}  heuristic cost at node: {score}")
         return score
 
+    def heuristic_e1(self, current_player):
+        return 0
+
+    def heuristic_e2(self, current_player):
+        return 0
+
     def minmax(
         self, depth, current_player, next_player
     ) -> Tuple[int, CoordPair | None, float]:
@@ -726,9 +733,15 @@ class Game:
             or self._defender_has_ai == False
         ):
             # Calculate and return the heuristic value for this node
-            heuristic_value = self.heuristic_e0(current_player)
-            # print(f"heuristic Value {heuristic_value}")
-            return heuristic_value, None
+            if self.options.heuristic == 0:
+                heuristic_value = self.heuristic_e0(current_player)
+                return heuristic_value, None
+            elif self.options.heuristic == 1:
+                heuristic_value = self.heuristic_e1(current_player)
+                return heuristic_value, None
+            elif self.options.heuristic == 2:
+                heuristic_value = self.heuristic_e2(current_player)
+                return heuristic_value, None
 
         if current_player == next_player:  # (Maximizer)
             max_eval = MIN_HEURISTIC_SCORE
@@ -790,8 +803,15 @@ class Game:
             or self._defender_has_ai == False
         ):
             # Calculate and return the heuristic value for this node
-            heuristic_value = self.heuristic_e0(current_player)
-            return heuristic_value, None
+            if self.options.heuristic == 0:
+                heuristic_value = self.heuristic_e0(current_player)
+                return heuristic_value, None
+            elif self.options.heuristic == 1:
+                heuristic_value = self.heuristic_e1(current_player)
+                return heuristic_value, None
+            elif self.options.heuristic == 2:
+                heuristic_value = self.heuristic_e2(current_player)
+                return heuristic_value, None
 
         if current_player == next_player:  # Maximizer
             max_eval = MIN_HEURISTIC_SCORE
@@ -966,6 +986,11 @@ class GameGUI:
         self.game_mode.set("H-H")  # Initialize with "H-H" selected
         self.init_game_mode_row(root, param_font)
 
+        # Create a variable to store the selected heuristic
+        self.heuristic_chosen = tk.StringVar()
+        self.heuristic_chosen.set("e0")  # Initialize with "e0" selected
+        self.init_heuristic_row(root, param_font)
+
         self.init_board(root, param_font)
 
     def init_params_row(self, root, param_font):
@@ -1059,6 +1084,38 @@ class GameGUI:
 
         game_mode_frame.grid(row=2, column=0, columnspan=3)
 
+    def init_heuristic_row(self, root, param_font):
+        # Create radio buttons for game mode selection
+        heuristic_frame = tk.Frame(root)
+        e_0_radio = tk.Radiobutton(
+            heuristic_frame,
+            text="e0",
+            variable=self.heuristic_chosen,
+            value="e0",
+            font=param_font,
+        )
+        e_0_radio.grid(row=0, column=0, padx=5)
+
+        e_1_radio = tk.Radiobutton(
+            heuristic_frame,
+            text="e1",
+            variable=self.heuristic_chosen,
+            value="e1",
+            font=param_font,
+        )
+        e_1_radio.grid(row=0, column=1, padx=5)
+
+        e_2_radio = tk.Radiobutton(
+            heuristic_frame,
+            text="e2",
+            variable=self.heuristic_chosen,
+            value="e2",
+            font=param_font,
+        )
+        e_2_radio.grid(row=0, column=2, padx=5)
+
+        heuristic_frame.grid(row=2, column=4, columnspan=3, pady=5)
+
     def init_board(self, root, param_font):
         restart_button = tk.Button(
             root, text="Restart Game", font=param_font, command=self.restart_game
@@ -1144,8 +1201,9 @@ class GameGUI:
         self.console.logs.config(state=tk.NORMAL)
         self.console.logs.delete("1.0", tk.END)
         self.console.logs.config(state=tk.DISABLED)
-        self.console.create_initial_log()
         self.computer_options()
+        self.heuristic_options()
+        self.console.create_initial_log()
 
     def computer_options(self):
         selected_mode = self.game_mode.get()
@@ -1171,6 +1229,21 @@ class GameGUI:
             print(msg)
             # self.insert_in_log(msg)
             self.ai_vs_ai()
+
+    def heuristic_options(self):
+        selected_heuristic = self.heuristic_chosen.get()
+        if selected_heuristic == "e0":
+            msg = "Heuristic: " + selected_heuristic
+            self.game.options.heuristic = 0
+        elif selected_heuristic == "e1":
+            msg = "Heuristic: " + selected_heuristic
+            print(msg)
+            self.game.options.heuristic = 1
+        elif selected_heuristic == "e2":
+            # Start the game in H-AI mode
+            msg = "Heuristic: " + selected_heuristic
+            print(msg)
+            self.game.options.heuristic = 2
 
     def manual_entry(self):
         # Implement manual entry logic here
@@ -1363,7 +1436,7 @@ class Console:
                 attacker = "AI"
                 defender = "H"
 
-        msg = f"Timeout: {self.game_gui.game.options.max_time} s\nMax Turns: {self.game_gui.game.options.max_turns}\nGame Type: {self.game_gui.game.options.game_type.name}\nMax Depth: {self.game_gui.game.options.max_depth}\nMin Depth: {self.game_gui.game.options.min_depth}\nAlpha-Beta: {self.game_gui.game.options.alpha_beta} \n\n Attacker: {attacker} Defender: {defender}\n\n{self.game_gui.game.get_board_config()}"
+        msg = f"Timeout: {self.game_gui.game.options.max_time} s\nMax Turns: {self.game_gui.game.options.max_turns}\nGame Type: {self.game_gui.game.options.game_type.name}\nMax Depth: {self.game_gui.game.options.max_depth}\nMin Depth: {self.game_gui.game.options.min_depth}\nAlpha-Beta: {self.game_gui.game.options.alpha_beta}\nHeuristic: {self.game_gui.game.options.heuristic} \n\n Attacker: {attacker} Defender: {defender}\n\n{self.game_gui.game.get_board_config()}"
         self.insert_in_log(msg)
 
     def create_log(self, log_type, coord_dst, coord_src):
