@@ -718,9 +718,11 @@ class Game:
         # print(f"Next player: {next_player}  heuristic cost at node: {score}")
         return score
 
+    # TODO Add heuristic e1
     def heuristic_e1(self, current_player):
         return 0
 
+    # TODO Add heuristic e1
     def heuristic_e2(self, current_player):
         return 0
 
