@@ -753,7 +753,7 @@ class Game:
                         defender_score += unit.health
 
         # Calculate the heuristic score
-        if current_player == True:
+        if current_player == Player.Attacker:
             score = attacker_score - defender_score
         else:
             score = defender_score - attacker_score
@@ -805,7 +805,7 @@ class Game:
         objectives_score = self.evaluate_objectives(current_player)
 
         # Calculate the heuristic score, considering objectives
-        if current_player == True:
+        if current_player == Player.Attacker:
             score = attacker_score - defender_score + objectives_score
         else:
             score = defender_score - attacker_score + objectives_score
