@@ -267,7 +267,8 @@ class Options:
     max_turns: int | None = 100
     randomize_moves: bool = True
     broker: str | None = None
-    heuristic: str | None = 0
+    attacker_heuristic: str | None = 0
+    defender_heuristic: str | None = 0
 
 
 ##############################################################################################################
@@ -677,7 +678,8 @@ class Game:
                         if self.is_valid_coord(dst_coord):
                             # Create a CoordPair representing the move and add it to the list
                             move = CoordPair(src=Coord(row, col), dst=dst_coord)
-                            if self.is_valid_move(move):
+                            (is_valid, _) = self.is_valid_move(move)
+                            if is_valid:
                                 valid_moves.append(move)
         # Return the list of valid move candidates
         return valid_moves
@@ -725,18 +727,14 @@ class Game:
 
             # Calculate the heuristic score formula
         if current_player == Player.Attacker:
-            score = 3 * (vp1 + tp1 + fp1 + pp1 + 9999 * aip1) - 3 * (
-                vp2 + tp2 + fp2 + pp2 + 9999 * aip2
-            )
+            score = 3 * (vp1 + tp1 + fp1 + pp1) + 9999 * aip1 - 3 * (
+                vp2 + tp2 + fp2 + pp2) - 9999 * aip2
         else:
-            score = 3 * (vp2 + tp2 + fp2 + pp2 + 9999 * aip2) - 3 * (
-                vp1 + tp1 + fp1 + pp1 + 9999 * aip1
-            )
+            score = 3 * (vp2 + tp2 + fp2 + pp2) + 9999 * aip2 - 3 * (
+                vp1 + tp1 + fp1 + pp1) - 9999 * aip1
 
         # print(f"Next player: {next_player}  heuristic cost at node: {score}")
         return score
-
-        # TODO Add heuristic e1
 
     def heuristic_e1(self, current_player):
         # Initialize the scores for each player
@@ -917,18 +915,19 @@ class Game:
             or self._attacker_has_ai == False
             or self._defender_has_ai == False
         ):
+            heuristic = self.options.attacker_heuristic if current_player.value == 0 else self.options.defender_heuristic
             # Calculate and return the heuristic value for this node
-            if self.options.heuristic == 0:
+            if heuristic == 0:
                 heuristic_value = self.heuristic_e0(current_player)
                 return heuristic_value, None
-            elif self.options.heuristic == 1:
+            elif heuristic == 1:
                 heuristic_value = self.heuristic_e1(current_player)
                 return heuristic_value, None
-            elif self.options.heuristic == 2:
+            elif heuristic == 2:
                 heuristic_value = self.heuristic_e2(current_player)
                 return heuristic_value, None
 
-        if current_player == next_player:  # (Maximizer)
+        if current_player.value == next_player.value:  # (Maximizer)
             max_eval = MIN_HEURISTIC_SCORE
             best_move = None
 
@@ -983,14 +982,15 @@ class Game:
             or self._attacker_has_ai == False
             or self._defender_has_ai == False
         ):
+            heuristic = self.options.attacker_heuristic if current_player.value == 0 else self.options.defender_heuristic
             # Calculate and return the heuristic value for this node
-            if self.options.heuristic == 0:
+            if heuristic == 0:
                 heuristic_value = self.heuristic_e0(current_player)
                 return heuristic_value, None
-            elif self.options.heuristic == 1:
+            elif heuristic == 1:
                 heuristic_value = self.heuristic_e1(current_player)
                 return heuristic_value, None
-            elif self.options.heuristic == 2:
+            elif heuristic == 2:
                 heuristic_value = self.heuristic_e2(current_player)
                 return heuristic_value, None
 
@@ -1052,7 +1052,7 @@ class Game:
             return min_eval, best_move
 
     def suggest_move(self) -> CoordPair | None:
-        """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
+        """Suggest the next move using minimax alpha beta."""
         start_time = datetime.now()
         if self.options.alpha_beta:
             (score, move) = self.minmax_alphabeta(
@@ -1167,8 +1167,10 @@ class GameGUI:
         self.init_game_mode_row(root, param_font)
 
         # Create a variable to store the selected heuristic
-        self.heuristic_chosen = tk.StringVar()
-        self.heuristic_chosen.set("e0")  # Initialize with "e0" selected
+        self.attacker_heuristic = tk.StringVar()
+        self.attacker_heuristic.set("e0")  # Initialize with "e0" selected
+        self.defender_heuristic = tk.StringVar()
+        self.defender_heuristic.set("e0")  # Initialize with "e0" selected
         self.init_heuristic_row(root, param_font)
 
         self.init_board(root, param_font)
@@ -1267,32 +1269,35 @@ class GameGUI:
     def init_heuristic_row(self, root, param_font):
         # Create radio buttons for game mode selection
         heuristic_frame = tk.Frame(root)
-        e_0_radio = tk.Radiobutton(
-            heuristic_frame,
-            text="e0",
-            variable=self.heuristic_chosen,
-            value="e0",
-            font=param_font,
-        )
-        e_0_radio.grid(row=0, column=0, padx=5)
+        for i in range(2):
+            label = tk.Label(heuristic_frame, text="Attacker:" if i==0 else "Defender:", font=param_font)
+            label.grid(row=i, column=0, padx=5)
+            e_0_radio = tk.Radiobutton(
+                heuristic_frame,
+                text="e0",
+                variable=self.attacker_heuristic if i==0 else self.defender_heuristic,
+                value="e0",
+                font=param_font,
+            )
+            e_0_radio.grid(row=i, column=1, padx=5)
 
-        e_1_radio = tk.Radiobutton(
-            heuristic_frame,
-            text="e1",
-            variable=self.heuristic_chosen,
-            value="e1",
-            font=param_font,
-        )
-        e_1_radio.grid(row=0, column=1, padx=5)
+            e_1_radio = tk.Radiobutton(
+                heuristic_frame,
+                text="e1",
+                variable=self.attacker_heuristic if i==0 else self.defender_heuristic,
+                value="e1",
+                font=param_font,
+            )
+            e_1_radio.grid(row=i, column=2, padx=5)
 
-        e_2_radio = tk.Radiobutton(
-            heuristic_frame,
-            text="e2",
-            variable=self.heuristic_chosen,
-            value="e2",
-            font=param_font,
-        )
-        e_2_radio.grid(row=0, column=2, padx=5)
+            e_2_radio = tk.Radiobutton(
+                heuristic_frame,
+                text="e2",
+                variable=self.attacker_heuristic if i==0 else self.defender_heuristic,
+                value="e2",
+                font=param_font,
+            )
+            e_2_radio.grid(row=i, column=3, padx=5)
 
         heuristic_frame.grid(row=2, column=4, columnspan=3, pady=5)
 
@@ -1411,19 +1416,29 @@ class GameGUI:
             self.ai_vs_ai()
 
     def heuristic_options(self):
-        selected_heuristic = self.heuristic_chosen.get()
-        if selected_heuristic == "e0":
-            msg = "Heuristic: " + selected_heuristic
-            self.game.options.heuristic = 0
-        elif selected_heuristic == "e1":
-            msg = "Heuristic: " + selected_heuristic
-            print(msg)
-            self.game.options.heuristic = 1
-        elif selected_heuristic == "e2":
-            # Start the game in H-AI mode
-            msg = "Heuristic: " + selected_heuristic
-            print(msg)
-            self.game.options.heuristic = 2
+        for i in range(2):
+            selected_heuristic = self.attacker_heuristic.get() if i==0 else self.defender_heuristic.get()
+            if selected_heuristic == "e0":
+                msg = "Heuristic: " + selected_heuristic
+                if i==0:
+                    self.game.options.attacker_heuristic = 0
+                else:
+                    self.game.options.defender_heuristic = 0
+            elif selected_heuristic == "e1":
+                msg = "Heuristic: " + selected_heuristic
+                print(msg)
+                if i==0:
+                    self.game.options.attacker_heuristic = 1
+                else:
+                    self.game.options.defender_heuristic = 1
+            elif selected_heuristic == "e2":
+                # Start the game in H-AI mode
+                msg = "Heuristic: " + selected_heuristic
+                print(msg)
+                if i==0:
+                    self.game.options.attacker_heuristic = 2
+                else:
+                    self.game.options.defender_heuristic = 2
 
     def manual_entry(self):
         # Implement manual entry logic here
@@ -1494,8 +1509,9 @@ class GameGUI:
                 success, result = self.game.human_turn(move)
                 self.game_manual_turn_function(success, result, coord)
                 if (
-                    self.game.options.game_type == GameType.AttackerVsComp
-                    or self.game.options.game_type == GameType.CompVsDefender
+                    success and
+                    (self.game.options.game_type == GameType.AttackerVsComp
+                    or self.game.options.game_type == GameType.CompVsDefender)
                 ):
                     success2, result2, coord2 = self.game.computer_turn()
                     self.game_AI_turn_function(success2, result2, coord2)
@@ -1504,8 +1520,9 @@ class GameGUI:
             success, result = self.game.human_turn(move)
             self.game_manual_turn_function(success, result, coord)
             if (
-                self.game.options.game_type == GameType.AttackerVsComp
-                or self.game.options.game_type == GameType.CompVsDefender
+                success and
+                (self.game.options.game_type == GameType.AttackerVsComp
+                or self.game.options.game_type == GameType.CompVsDefender)
             ):
                 success2, result2, coord2 = self.game.computer_turn()
                 self.game_AI_turn_function(success2, result2, coord2)
@@ -1528,7 +1545,7 @@ class GameGUI:
                 self.console.create_log(LogType.GameEnd, coord, self.selected_coord)
                 messagebox.showinfo("Game Over", f"{winner.name} wins!")
         else:
-            self.console.create_log(result, coord)
+            self.console.create_log(result, coord, self.selected_coord)
             self.reset_turn(result)
 
     def game_AI_turn_function(self, success, result, coord):
@@ -1616,14 +1633,14 @@ class Console:
                 attacker = "AI"
                 defender = "H"
 
-        msg = f"Timeout: {self.game_gui.game.options.max_time} s\nMax Turns: {self.game_gui.game.options.max_turns}\nGame Type: {self.game_gui.game.options.game_type.name}\nMax Depth: {self.game_gui.game.options.max_depth}\nMin Depth: {self.game_gui.game.options.min_depth}\nAlpha-Beta: {self.game_gui.game.options.alpha_beta}\nHeuristic: {self.game_gui.game.options.heuristic} \n\n Attacker: {attacker} Defender: {defender}\n\n{self.game_gui.game.get_board_config()}"
+        msg = f"Timeout: {self.game_gui.game.options.max_time} s\nMax Turns: {self.game_gui.game.options.max_turns}\nGame Type: {self.game_gui.game.options.game_type.name}\nMax Depth: {self.game_gui.game.options.max_depth}\nMin Depth: {self.game_gui.game.options.min_depth}\nAlpha-Beta: {self.game_gui.game.options.alpha_beta}\nHeuristics: e{self.game_gui.game.options.attacker_heuristic}(Attacker) e{self.game_gui.game.options.defender_heuristic}(Defender) \n\n Attacker: {attacker} Defender: {defender}\n\n{self.game_gui.game.get_board_config()}"
         self.insert_in_log(msg)
 
     def create_log(self, log_type, coord_dst, coord_src):
         msg = ""
         selected_unit = ""
         if log_type.value != 11:
-            selected_unit = self.game_gui.game.get(coord_dst)
+            selected_unit = self.game_gui.game.get(coord_src)
             if log_type.value <= 6:
                 msg += f"(Turn #{self.game_gui.turn_count+1}) {self.game_gui.game.next_player.name}: Invalid Move - "
             else:
