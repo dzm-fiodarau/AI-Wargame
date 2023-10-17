@@ -282,6 +282,7 @@ class Stats:
     evaluations_per_depth: dict[int, int] = field(default_factory=dict)
     branching_factor: list[float] = field(default_factory=list)
 
+
 ##############################################################################################################
 
 
@@ -732,11 +733,19 @@ class Game:
 
             # Calculate the heuristic score formula
         if current_player == Player.Attacker:
-            score = 3 * (vp1 + tp1 + fp1 + pp1) + 9999 * aip1 - 3 * (
-                vp2 + tp2 + fp2 + pp2) - 9999 * aip2
+            score = (
+                3 * (vp1 + tp1 + fp1 + pp1)
+                + 9999 * aip1
+                - 3 * (vp2 + tp2 + fp2 + pp2)
+                - 9999 * aip2
+            )
         else:
-            score = 3 * (vp2 + tp2 + fp2 + pp2) + 9999 * aip2 - 3 * (
-                vp1 + tp1 + fp1 + pp1) - 9999 * aip1
+            score = (
+                3 * (vp2 + tp2 + fp2 + pp2)
+                + 9999 * aip2
+                - 3 * (vp1 + tp1 + fp1 + pp1)
+                - 9999 * aip1
+            )
 
         # print(f"Next player: {next_player}  heuristic cost at node: {score}")
         return score
@@ -920,7 +929,11 @@ class Game:
             or self._attacker_has_ai == False
             or self._defender_has_ai == False
         ):
-            heuristic = self.options.attacker_heuristic if current_player.value == 0 else self.options.defender_heuristic
+            heuristic = (
+                self.options.attacker_heuristic
+                if current_player.value == 0
+                else self.options.defender_heuristic
+            )
             # Calculate and return the heuristic value for this node
             if heuristic == 0:
                 heuristic_value = self.heuristic_e0(current_player)
@@ -933,9 +946,11 @@ class Game:
                 return heuristic_value, None
 
         move_candidates = self.move_candidates(next_player)
-        self.stats.evaluations_per_depth[self.options.max_depth-depth] += sum(1 for i in move_candidates)
+        self.stats.evaluations_per_depth[self.options.max_depth - depth] += sum(
+            1 for i in move_candidates
+        )
         if not self.after_half:
-            if (time.time()-self.turn_start_time)/self.options.max_time>=0.90:
+            if (time.time() - self.turn_start_time) / self.options.max_time >= 0.90:
                 self.after_half = True
 
         if current_player.value == next_player.value:  # (Maximizer)
@@ -951,7 +966,9 @@ class Game:
 
                     # Recursively evaluate the move in the copied game state
                     eval, _ = game_clone.minmax(
-                        depth - 1 if depth<=1 else depth-1-self.depth_penalty, current_player, game_clone.next_player
+                        depth - 1 if depth <= 1 else depth - 1 - self.depth_penalty,
+                        current_player,
+                        game_clone.next_player,
                     )
 
                     # Update max_eval and best_move if needed
@@ -959,7 +976,9 @@ class Game:
                         max_eval = eval
                         best_move = move
                     if self.after_half:
-                        if (time.time()-self.turn_start_time)/self.options.max_time>=0.98 and best_move != None:
+                        if (
+                            time.time() - self.turn_start_time
+                        ) / self.options.max_time >= 0.98 and best_move != None:
                             break
 
             return max_eval, best_move
@@ -978,7 +997,9 @@ class Game:
                     game_clone.next_turn()
 
                     eval, _ = game_clone.minmax(
-                        depth - 1 if depth<=1 else depth-1-self.depth_penalty, current_player, game_clone.next_player
+                        depth - 1 if depth <= 1 else depth - 1 - self.depth_penalty,
+                        current_player,
+                        game_clone.next_player,
                     )
 
                     # Update min_eval and best_move if needed
@@ -986,7 +1007,9 @@ class Game:
                         min_eval = eval
                         best_move = move
                     if self.after_half:
-                        if (time.time()-self.turn_start_time)/self.options.max_time>=0.98 and best_move != None:
+                        if (
+                            time.time() - self.turn_start_time
+                        ) / self.options.max_time >= 0.98 and best_move != None:
                             break
 
             return min_eval, best_move
@@ -999,7 +1022,11 @@ class Game:
             or self._attacker_has_ai == False
             or self._defender_has_ai == False
         ):
-            heuristic = self.options.attacker_heuristic if current_player.value == 0 else self.options.defender_heuristic
+            heuristic = (
+                self.options.attacker_heuristic
+                if current_player.value == 0
+                else self.options.defender_heuristic
+            )
             # Calculate and return the heuristic value for this node
             if heuristic == 0:
                 heuristic_value = self.heuristic_e0(current_player)
@@ -1012,9 +1039,11 @@ class Game:
                 return heuristic_value, None
 
         move_candidates = self.move_candidates(next_player)
-        self.stats.evaluations_per_depth[self.options.max_depth-depth] = sum(1 for i in move_candidates)
+        self.stats.evaluations_per_depth[self.options.max_depth - depth] = sum(
+            1 for i in move_candidates
+        )
         if not self.after_half:
-            if (time.time()-self.turn_start_time)/self.options.max_time>=0.90:
+            if (time.time() - self.turn_start_time) / self.options.max_time >= 0.90:
                 self.after_half = True
 
         if current_player == next_player:  # Maximizer
@@ -1028,7 +1057,11 @@ class Game:
 
                     # Recursively evaluate the move in the copied game state
                     eval, _ = game_clone.minmax_alphabeta(
-                        depth - 1 if depth<=1 else depth-1-self.depth_penalty, current_player, game_clone.next_player, alpha, beta
+                        depth - 1 if depth <= 1 else depth - 1 - self.depth_penalty,
+                        current_player,
+                        game_clone.next_player,
+                        alpha,
+                        beta,
                     )
 
                     # Update max_eval and best_move if needed
@@ -1043,7 +1076,9 @@ class Game:
                     if beta <= alpha:
                         break
                     if self.after_half:
-                        if (time.time()-self.turn_start_time)/self.options.max_time>=0.98 and best_move != None:
+                        if (
+                            time.time() - self.turn_start_time
+                        ) / self.options.max_time >= 0.98 and best_move != None:
                             break
 
             return max_eval, best_move
@@ -1060,7 +1095,11 @@ class Game:
 
                     # Recursively evaluate the move in the copied game state
                     eval, _ = game_clone.minmax_alphabeta(
-                        depth - 1 if depth<=1 else depth-1-self.depth_penalty, current_player, game_clone.next_player, alpha, beta
+                        depth - 1 if depth <= 1 else depth - 1 - self.depth_penalty,
+                        current_player,
+                        game_clone.next_player,
+                        alpha,
+                        beta,
                     )
 
                     # Update min_eval and best_move if needed
@@ -1075,7 +1114,9 @@ class Game:
                     if beta <= alpha:
                         break
                     if self.after_half:
-                        if (time.time()-self.turn_start_time)/self.options.max_time>=0.98 and best_move != None:
+                        if (
+                            time.time() - self.turn_start_time
+                        ) / self.options.max_time >= 0.98 and best_move != None:
                             break
 
             return min_eval, best_move
@@ -1096,12 +1137,12 @@ class Game:
             (score, move) = self.minmax(
                 self.options.max_depth, self.next_player, self.next_player
             )
-        elapsed_time = time.time()-self.turn_start_time # need for log
+        elapsed_time = time.time() - self.turn_start_time  # need for log
         self.after_half = False
         self.depth_penalty = 0
         move_candidates = self.move_candidates(self.next_player)
         self.stats.branching_factor.append(sum(1 for i in move_candidates))
-        
+
         return (move, elapsed_time, score)
 
     def post_move_to_broker(self, move: CoordPair):
@@ -1293,12 +1334,16 @@ class GameGUI:
         # Create radio buttons for game mode selection
         heuristic_frame = tk.Frame(root)
         for i in range(2):
-            label = tk.Label(heuristic_frame, text="Attacker:" if i==0 else "Defender:", font=param_font)
+            label = tk.Label(
+                heuristic_frame,
+                text="Attacker:" if i == 0 else "Defender:",
+                font=param_font,
+            )
             label.grid(row=i, column=0, padx=5)
             e_0_radio = tk.Radiobutton(
                 heuristic_frame,
                 text="e0",
-                variable=self.attacker_heuristic if i==0 else self.defender_heuristic,
+                variable=self.attacker_heuristic if i == 0 else self.defender_heuristic,
                 value="e0",
                 font=param_font,
             )
@@ -1307,7 +1352,7 @@ class GameGUI:
             e_1_radio = tk.Radiobutton(
                 heuristic_frame,
                 text="e1",
-                variable=self.attacker_heuristic if i==0 else self.defender_heuristic,
+                variable=self.attacker_heuristic if i == 0 else self.defender_heuristic,
                 value="e1",
                 font=param_font,
             )
@@ -1316,7 +1361,7 @@ class GameGUI:
             e_2_radio = tk.Radiobutton(
                 heuristic_frame,
                 text="e2",
-                variable=self.attacker_heuristic if i==0 else self.defender_heuristic,
+                variable=self.attacker_heuristic if i == 0 else self.defender_heuristic,
                 value="e2",
                 font=param_font,
             )
@@ -1443,17 +1488,21 @@ class GameGUI:
 
     def heuristic_options(self):
         for i in range(2):
-            selected_heuristic = self.attacker_heuristic.get() if i==0 else self.defender_heuristic.get()
+            selected_heuristic = (
+                self.attacker_heuristic.get()
+                if i == 0
+                else self.defender_heuristic.get()
+            )
             if selected_heuristic == "e0":
                 msg = "Heuristic: " + selected_heuristic
-                if i==0:
+                if i == 0:
                     self.game.options.attacker_heuristic = 0
                 else:
                     self.game.options.defender_heuristic = 0
             elif selected_heuristic == "e1":
                 msg = "Heuristic: " + selected_heuristic
                 print(msg)
-                if i==0:
+                if i == 0:
                     self.game.options.attacker_heuristic = 1
                 else:
                     self.game.options.defender_heuristic = 1
@@ -1461,7 +1510,7 @@ class GameGUI:
                 # Start the game in H-AI mode
                 msg = "Heuristic: " + selected_heuristic
                 print(msg)
-                if i==0:
+                if i == 0:
                     self.game.options.attacker_heuristic = 2
                 else:
                     self.game.options.defender_heuristic = 2
@@ -1484,28 +1533,32 @@ class GameGUI:
         print(self.game.options.game_type)
 
     def ai_vs_ai(self):
-        # Implement AI vs AI logic here
+        # Initialize the game for AI vs AI
         self.game.options.game_type = GameType.CompVsComp
-        # print(self.game.options.game_type)
-        i = 0
-        while True or i < self.game.options.max_turns:
-            if self.game.is_finished():
-                winner = self.game.has_winner()
-                self.console.create_log(LogType.GameEnd, coord.dst, coord.src)
-                messagebox.showinfo("Game Over", f"{winner.name} wins!")
-                break
+        print("Starting Game in AI-AI mode")
+
+        # Schedule the first AI turn
+        self.root.after(100, self.ai_turn)  # 100ms delay, you can adjust this
+
+    def ai_turn(self):
+        if (
+            not self.game.is_finished()
+            and self.turn_count < self.game.options.max_turns
+        ):
             success, result, coord, time, score = self.game.computer_turn()
             if success:
                 self.turn_count += 1  # Increment turn count
                 self.update_buttons()
                 self.update_turn_label()  # Update the turn label
                 self.console.create_log(result, coord.dst, coord.src)
-                i = i + 1
-
+                self.root.after(100, self.ai_turn)  # Schedule the next turn
             else:
                 self.console.create_log(result, coord.dst, coord.src)
-                print("Computer doesnt know what to do")
-                break
+                print("Computer doesn't know what to do")
+        elif self.game.is_finished():
+            winner = self.game.has_winner()
+            self.console.create_log(LogType.GameEnd, coord.dst, coord.src)
+            messagebox.showinfo("Game Over", f"{winner.name} wins!")
 
     def update_buttons(self):
         for row in range(5):
@@ -1534,10 +1587,9 @@ class GameGUI:
                 move = CoordPair(self.selected_coord, coord)
                 success, result = self.game.human_turn(move)
                 self.game_manual_turn_function(success, result, coord)
-                if (
-                    success and
-                    (self.game.options.game_type == GameType.AttackerVsComp
-                    or self.game.options.game_type == GameType.CompVsDefender)
+                if success and (
+                    self.game.options.game_type == GameType.AttackerVsComp
+                    or self.game.options.game_type == GameType.CompVsDefender
                 ):
                     success2, result2, coord2, time, score = self.game.computer_turn()
                     self.game_AI_turn_function(success2, result2, coord2, time, score)
@@ -1545,10 +1597,9 @@ class GameGUI:
             move = CoordPair(self.selected_coord, coord)
             success, result = self.game.human_turn(move)
             self.game_manual_turn_function(success, result, coord)
-            if (
-                success and
-                (self.game.options.game_type == GameType.AttackerVsComp
-                or self.game.options.game_type == GameType.CompVsDefender)
+            if success and (
+                self.game.options.game_type == GameType.AttackerVsComp
+                or self.game.options.game_type == GameType.CompVsDefender
             ):
                 success2, result2, coord2, time, score = self.game.computer_turn()
                 self.game_AI_turn_function(success2, result2, coord2, time, score)
