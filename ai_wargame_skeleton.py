@@ -298,10 +298,13 @@ class Game:
     _defender_has_ai: bool = True
     turn_start_time: float = 0.0
     after_half: bool = False
+    depth_penalty: int = 0
 
     def __post_init__(self):
         """Automatically called after class init to set up the default board state."""
         self.reset_board()
+        for i in range(self.options.max_depth):
+            self.stats.evaluations_per_depth[i] = 0
 
     def reset_board(self):
         dim = self.options.dim
@@ -809,11 +812,11 @@ class Game:
             score = attacker_score - defender_score + objectives_score
         else:
             score = defender_score - attacker_score + objectives_score
-        print(f"---------------------------")
-        print(f"Score: {score}")
-        print(f"attacker_score: {score}")
-        print(f"defender_score: {score}")
-        print(f"objectives_score: {score}")
+        # print(f"---------------------------")
+        # print(f"Score: {score}")
+        # print(f"attacker_score: {score}")
+        # print(f"defender_score: {score}")
+        # print(f"objectives_score: {score}")
 
         return score
 
@@ -931,6 +934,9 @@ class Game:
 
         move_candidates = self.move_candidates(next_player)
         self.stats.evaluations_per_depth[self.options.max_depth-depth] += sum(1 for i in move_candidates)
+        if not self.after_half:
+            if (time.time()-self.turn_start_time)/self.options.max_time>=0.90:
+                self.after_half = True
 
         if current_player.value == next_player.value:  # (Maximizer)
             max_eval = MIN_HEURISTIC_SCORE
@@ -945,13 +951,16 @@ class Game:
 
                     # Recursively evaluate the move in the copied game state
                     eval, _ = game_clone.minmax(
-                        depth - 1, current_player, game_clone.next_player
+                        depth - 1 if depth<=1 else depth-1-self.depth_penalty, current_player, game_clone.next_player
                     )
 
                     # Update max_eval and best_move if needed
                     if eval >= max_eval:
                         max_eval = eval
                         best_move = move
+                    if self.after_half:
+                        if (time.time()-self.turn_start_time)/self.options.max_time>=0.98 and best_move != None:
+                            break
 
             return max_eval, best_move
 
@@ -969,13 +978,16 @@ class Game:
                     game_clone.next_turn()
 
                     eval, _ = game_clone.minmax(
-                        depth - 1, current_player, game_clone.next_player
+                        depth - 1 if depth<=1 else depth-1-self.depth_penalty, current_player, game_clone.next_player
                     )
 
                     # Update min_eval and best_move if needed
                     if eval < min_eval:
                         min_eval = eval
                         best_move = move
+                    if self.after_half:
+                        if (time.time()-self.turn_start_time)/self.options.max_time>=0.98 and best_move != None:
+                            break
 
             return min_eval, best_move
 
@@ -1001,6 +1013,9 @@ class Game:
 
         move_candidates = self.move_candidates(next_player)
         self.stats.evaluations_per_depth[self.options.max_depth-depth] = sum(1 for i in move_candidates)
+        if not self.after_half:
+            if (time.time()-self.turn_start_time)/self.options.max_time>=0.90:
+                self.after_half = True
 
         if current_player == next_player:  # Maximizer
             max_eval = MIN_HEURISTIC_SCORE
@@ -1013,7 +1028,7 @@ class Game:
 
                     # Recursively evaluate the move in the copied game state
                     eval, _ = game_clone.minmax_alphabeta(
-                        depth - 1, current_player, game_clone.next_player, alpha, beta
+                        depth - 1 if depth<=1 else depth-1-self.depth_penalty, current_player, game_clone.next_player, alpha, beta
                     )
 
                     # Update max_eval and best_move if needed
@@ -1027,6 +1042,9 @@ class Game:
                     # Perform alpha-beta pruning
                     if beta <= alpha:
                         break
+                    if self.after_half:
+                        if (time.time()-self.turn_start_time)/self.options.max_time>=0.98 and best_move != None:
+                            break
 
             return max_eval, best_move
 
@@ -1042,7 +1060,7 @@ class Game:
 
                     # Recursively evaluate the move in the copied game state
                     eval, _ = game_clone.minmax_alphabeta(
-                        depth - 1, current_player, game_clone.next_player, alpha, beta
+                        depth - 1 if depth<=1 else depth-1-self.depth_penalty, current_player, game_clone.next_player, alpha, beta
                     )
 
                     # Update min_eval and best_move if needed
@@ -1056,6 +1074,9 @@ class Game:
                     # Perform alpha-beta pruning
                     if beta <= alpha:
                         break
+                    if self.after_half:
+                        if (time.time()-self.turn_start_time)/self.options.max_time>=0.98 and best_move != None:
+                            break
 
             return min_eval, best_move
 
@@ -1077,6 +1098,7 @@ class Game:
             )
         elapsed_time = time.time()-self.turn_start_time # need for log
         self.after_half = False
+        self.depth_penalty = 0
         move_candidates = self.move_candidates(self.next_player)
         self.stats.branching_factor.append(sum(1 for i in move_candidates))
         
@@ -1390,6 +1412,9 @@ class GameGUI:
         self.computer_options()
         self.heuristic_options()
         self.console.create_initial_log()
+        for i in range(self.game.options.max_depth):
+            self.game.stats.evaluations_per_depth[i] = 0
+        self.game.stats.branching_factor.clear()
 
     def computer_options(self):
         selected_mode = self.game_mode.get()
@@ -1695,10 +1720,10 @@ class Console:
         msg += f"Cumul. Eval.: {sum(evals_per_depth.values())}\n"
         msg += "Cumul. Eval. by depth: "
         for k in sorted(evals_per_depth.keys()):
-            msg += f"[{k}]={evals_per_depth[k]}; "
+            msg += f"[{k+1}]={evals_per_depth[k]}; "
         msg += "\nCumul. Percent. Eval. by depth: "
         for k in sorted(evals_per_depth.keys()):
-            msg += f"[{k}]={round((100*evals_per_depth[k]/float(sum(evals_per_depth.values()))), 2)}%; "
+            msg += f"[{k+1}]={round((100*evals_per_depth[k]/float(sum(evals_per_depth.values()))), 2)}%; "
         msg += f"\nAvg. Branching Factor: {round((sum(self.game_gui.game.stats.branching_factor)/float(self.game_gui.game.turns_played)), 2)}\n-----------------------------------"
 
         print(msg)
