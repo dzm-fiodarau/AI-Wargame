@@ -300,6 +300,7 @@ class Game:
     turn_start_time: float = 0.0
     after_half: bool = False
     depth_penalty: int = 0
+    def_ai_position: Coord = field(default_factory=Coord)
 
     def __post_init__(self):
         """Automatically called after class init to set up the default board state."""
@@ -350,6 +351,8 @@ class Game:
         """Set contents of a board cell of the game at Coord."""
         if self.is_valid_coord(coord):
             self.board[coord.row][coord.col] = unit
+            if unit == UnitType.AI and unit.player==Player.Defender:
+                self.def_ai_position = coord
 
     def remove_dead(self, coord: Coord):
         """Remove unit at Coord if dead."""
@@ -699,7 +702,7 @@ class Game:
         else:
             return (0, None, 0)
 
-    def heuristic_e0(self, current_player):
+    def heuristic_e0(self):
         # Initialize counts for each unit type for both players
         vp1, tp1, fp1, pp1, aip1 = 0, 0, 0, 0, 0
         vp2, tp2, fp2, pp2, aip2 = 0, 0, 0, 0, 0
@@ -732,47 +735,83 @@ class Game:
                             aip2 += 1
 
             # Calculate the heuristic score formula
-        if current_player == Player.Attacker:
-            score = (
-                3 * (vp1 + tp1 + fp1 + pp1)
-                + 9999 * aip1
-                - 3 * (vp2 + tp2 + fp2 + pp2)
-                - 9999 * aip2
-            )
-        else:
-            score = (
-                3 * (vp2 + tp2 + fp2 + pp2)
-                + 9999 * aip2
-                - 3 * (vp1 + tp1 + fp1 + pp1)
-                - 9999 * aip1
-            )
+        # if current_player == Player.Attacker:
+        score = (
+            3 * (vp1 + tp1 + fp1 + pp1)
+            + 9999 * aip1
+            - 3 * (vp2 + tp2 + fp2 + pp2)
+            - 9999 * aip2
+        )
+        # else:
+        #     score = (
+        #         3 * (vp2 + tp2 + fp2 + pp2)
+        #         + 9999 * aip2
+        #         - 3 * (vp1 + tp1 + fp1 + pp1)
+        #         - 9999 * aip1
+        #     )
 
         # print(f"Next player: {next_player}  heuristic cost at node: {score}")
         return score
 
-    def heuristic_e1(self, current_player):
-        # Initialize the scores for each player
-        attacker_score = 0
-        defender_score = 0
+    def heuristic_e1(self):
+        # Initialize health counts for each unit type for both players
+        vp1, tp1, fp1, pp1, aip1 = 0, 0, 0, 0, 0
+        vp2, tp2, fp2, pp2, aip2 = 0, 0, 0, 0, 0
 
         # Loop through the game board
         for row in self.board:
             for unit in row:
                 if unit is not None and unit.is_alive():
                     if unit.player == Player.Attacker:
-                        attacker_score += unit.health
+                        if unit.type == UnitType.Virus:
+                            vp1 += unit.health
+                        elif unit.type == UnitType.Tech:
+                            tp1 += unit.health
+                        elif unit.type == UnitType.Firewall:
+                            fp1 += unit.health
+                        elif unit.type == UnitType.Program:
+                            pp1 += unit.health
+                        elif unit.type == UnitType.AI:
+                            aip1 += unit.health
                     elif unit.player == Player.Defender:
-                        defender_score += unit.health
-
-        # Calculate the heuristic score
-        if current_player == Player.Attacker:
-            score = attacker_score - defender_score
-        else:
-            score = defender_score - attacker_score
+                        if unit.type == UnitType.Virus:
+                            vp2 += unit.health
+                        elif unit.type == UnitType.Tech:
+                            tp2 += unit.health
+                        elif unit.type == UnitType.Firewall:
+                            fp2 += unit.health
+                        elif unit.type == UnitType.Program:
+                            pp2 += unit.health
+                        elif unit.type == UnitType.AI:
+                            aip2 += unit.health
+        # Calculate the heuristic score formula
+        score = (
+            (100*vp1 + 100*tp1 + 20*fp1 + 20*pp1 + 1000 * aip1)
+            - (100*vp2 + 100*tp2 + 20*fp2 + 20*pp2 + 1000 * aip2)
+            + self.get_virus_ai_factor()
+        )
 
         return score
 
-        # TODO Add heuristic e1
+    # Calculates a factor for e1 that tries to make virus closer to opponent's AI
+    # and the opponent's AI keep more adjacent units
+    def get_virus_ai_factor(self) -> int:
+        distances_to_ai = []
+        i=0
+        for row in self.board:
+            j=0
+            for unit in row:
+                if unit is not None and unit.type == UnitType.Virus:
+                    distances_to_ai.append(abs(self.def_ai_position.col-j)+abs(self.def_ai_position.row-i)-1)
+                j += 1
+            i += 1
+        adjacent_units = 0
+        adjacent_coords = list(self.def_ai_position.iter_adjacent())
+        for coord in adjacent_coords:
+            if self.get(coord) is not None and self.get(coord).player == Player.Defender:
+                adjacent_units += 1
+
+        return 90*adjacent_units-15*sum(distances_to_ai)
 
     def heuristic_e2(self, current_player):
         # Define unit values based on game-specific knowledge
@@ -817,10 +856,7 @@ class Game:
         objectives_score = self.evaluate_objectives(current_player)
 
         # Calculate the heuristic score, considering objectives
-        if current_player == Player.Attacker:
-            score = attacker_score - defender_score + objectives_score
-        else:
-            score = defender_score - attacker_score + objectives_score
+        score = attacker_score - defender_score + objectives_score
         # print(f"---------------------------")
         # print(f"Score: {score}")
         # print(f"attacker_score: {score}")
@@ -936,10 +972,10 @@ class Game:
             )
             # Calculate and return the heuristic value for this node
             if heuristic == 0:
-                heuristic_value = self.heuristic_e0(current_player)
+                heuristic_value = self.heuristic_e0()
                 return heuristic_value, None
             elif heuristic == 1:
-                heuristic_value = self.heuristic_e1(current_player)
+                heuristic_value = self.heuristic_e1()
                 return heuristic_value, None
             elif heuristic == 2:
                 heuristic_value = self.heuristic_e2(current_player)
@@ -953,7 +989,7 @@ class Game:
             if (time.time() - self.turn_start_time) / self.options.max_time >= 0.90:
                 self.after_half = True
 
-        if current_player.value == next_player.value:  # (Maximizer)
+        if current_player == Player.Attacker:  # (Maximizer)
             max_eval = MIN_HEURISTIC_SCORE
             best_move = None
 
@@ -1029,10 +1065,10 @@ class Game:
             )
             # Calculate and return the heuristic value for this node
             if heuristic == 0:
-                heuristic_value = self.heuristic_e0(current_player)
+                heuristic_value = self.heuristic_e0()
                 return heuristic_value, None
             elif heuristic == 1:
-                heuristic_value = self.heuristic_e1(current_player)
+                heuristic_value = self.heuristic_e1()
                 return heuristic_value, None
             elif heuristic == 2:
                 heuristic_value = self.heuristic_e2(current_player)
@@ -1551,13 +1587,15 @@ class GameGUI:
                 self.update_buttons()
                 self.update_turn_label()  # Update the turn label
                 self.console.create_log(result, coord.dst, coord.src)
+                self.console.create_ai_log(time, score)
                 self.root.after(100, self.ai_turn)  # Schedule the next turn
             else:
                 self.console.create_log(result, coord.dst, coord.src)
+                self.console.create_ai_log(time, score)
                 print("Computer doesn't know what to do")
         elif self.game.is_finished():
             winner = self.game.has_winner()
-            self.console.create_log(LogType.GameEnd, coord.dst, coord.src)
+            self.console.create_log(LogType.GameEnd, None, None)
             messagebox.showinfo("Game Over", f"{winner.name} wins!")
 
     def update_buttons(self):
@@ -1632,7 +1670,6 @@ class GameGUI:
             self.update_turn_label()  # Update the turn label
             self.console.create_log(result, coord.dst, coord.src)
             self.console.create_ai_log(time, score)
-
         else:
             self.console.create_log(result, coord.dst, coord.src)
             print("Computer doesnt know what to do")
@@ -1767,7 +1804,7 @@ class Console:
 
     def create_ai_log(self, elapsed_time, score):
         evals_per_depth = self.game_gui.game.stats.evaluations_per_depth
-        msg = f"Action Time={round(elapsed_time,2)}s, Heuristic Score={score}\n"
+        msg = f"Action Time={round(elapsed_time,2)}s, Heuristic Score={self.game_gui.game.heuristic_e0()}(e0)/{self.game_gui.game.heuristic_e1()}(e1)\n"
         msg += f"Cumul. Eval.: {sum(evals_per_depth.values())}\n"
         msg += "Cumul. Eval. by depth: "
         for k in sorted(evals_per_depth.keys()):
