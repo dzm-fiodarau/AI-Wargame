@@ -10,6 +10,7 @@ import random
 import requests
 
 import tkinter as tk
+import time
 from tkinter import messagebox
 
 # maximum and minimum values for our heuristic scores (usually represents an end of game condition)
@@ -279,8 +280,7 @@ class Stats:
     """Representation of the global game statistics."""
 
     evaluations_per_depth: dict[int, int] = field(default_factory=dict)
-    total_seconds: float = 0.0
-
+    branching_factor: list[float] = field(default_factory=list)
 
 ##############################################################################################################
 
@@ -296,6 +296,8 @@ class Game:
     stats: Stats = field(default_factory=Stats)
     _attacker_has_ai: bool = True
     _defender_has_ai: bool = True
+    turn_start_time: float = 0.0
+    after_half: bool = False
 
     def __post_init__(self):
         """Automatically called after class init to set up the default board state."""
@@ -431,9 +433,9 @@ class Game:
                     adjacent_unit is not None
                     and adjacent_unit.player != self.next_player
                 ):
-                    print(
-                        f"{src_unit.type.name} is already engaged in combat. Cannot move."
-                    )
+                    # print(
+                    #     f"{src_unit.type.name} is already engaged in combat. Cannot move."
+                    # )
                     return False, LogType.EngagedInCombat
 
         if dst_unit is None:
@@ -443,9 +445,9 @@ class Game:
                         coords.dst.row > coords.src.row
                         or coords.dst.col > coords.src.col
                     ):
-                        print(
-                            f"{src_unit.player.name}'s {src_unit.type.name} cannot move that way."
-                        )
+                        # print(
+                        #     f"{src_unit.player.name}'s {src_unit.type.name} cannot move that way."
+                        # )
                         return False, LogType.IllegalMove
                     else:
                         # print("Move Valid")
@@ -455,9 +457,9 @@ class Game:
                         coords.dst.row < coords.src.row
                         or coords.dst.col < coords.src.col
                     ):
-                        print(
-                            f"{src_unit.player.name}'s {src_unit.type.name} cannot move that way."
-                        )
+                        # print(
+                        #     f"{src_unit.player.name}'s {src_unit.type.name} cannot move that way."
+                        # )
                         return False, LogType.IllegalMove
                     else:
                         # print("Move Valid")
@@ -609,9 +611,9 @@ class Game:
                     print("The move is not valid! Try again.")
                     return False, result
 
-    def computer_turn(self) -> (bool, LogType, CoordPair | None):
+    def computer_turn(self) -> (bool, LogType, CoordPair, float, int | None):
         """Computer plays a move."""
-        mv = self.suggest_move()
+        (mv, time, score) = self.suggest_move()
         print(f"Suggested Move: {mv} + {self.next_player}")
         if mv is not None:
             (success, result) = self.perform_move(mv)
@@ -621,7 +623,7 @@ class Game:
 
                 self.next_turn()
                 print(f"TURN to PLAY: {self.next_player.name}")
-        return True, result, mv
+        return True, result, mv, time, score
 
     def player_units(self, player: Player) -> Iterable[Tuple[Coord, Unit]]:
         """Iterates over all units belonging to a player."""
@@ -927,11 +929,14 @@ class Game:
                 heuristic_value = self.heuristic_e2(current_player)
                 return heuristic_value, None
 
+        move_candidates = self.move_candidates(next_player)
+        self.stats.evaluations_per_depth[self.options.max_depth-depth] += sum(1 for i in move_candidates)
+
         if current_player.value == next_player.value:  # (Maximizer)
             max_eval = MIN_HEURISTIC_SCORE
             best_move = None
 
-            for move in self.move_candidates(next_player):
+            for move in move_candidates:
                 game_clone = self.clone()
                 # Make the move in the copied game state
                 (success, result) = game_clone.perform_move(move)
@@ -954,7 +959,7 @@ class Game:
             min_eval = MAX_HEURISTIC_SCORE
             best_move = None
 
-            for move in self.move_candidates(next_player):
+            for move in move_candidates:
                 game_clone = self.clone()
                 # Make the move in the copied game state
                 (success, result) = game_clone.perform_move(move)
@@ -994,10 +999,13 @@ class Game:
                 heuristic_value = self.heuristic_e2(current_player)
                 return heuristic_value, None
 
+        move_candidates = self.move_candidates(next_player)
+        self.stats.evaluations_per_depth[self.options.max_depth-depth] = sum(1 for i in move_candidates)
+
         if current_player == next_player:  # Maximizer
             max_eval = MIN_HEURISTIC_SCORE
             best_move = None
-            for move in self.move_candidates(next_player):
+            for move in move_candidates:
                 game_clone = self.clone()
                 (success, result) = game_clone.perform_move(move)
                 if success:
@@ -1026,7 +1034,7 @@ class Game:
             min_eval = MAX_HEURISTIC_SCORE
             best_move = None
 
-            for move in self.move_candidates(next_player):
+            for move in move_candidates:
                 game_clone = self.clone()
                 (success, result) = game_clone.perform_move(move)
                 if success:
@@ -1051,10 +1059,10 @@ class Game:
 
             return min_eval, best_move
 
-    def suggest_move(self) -> CoordPair | None:
+    def suggest_move(self) -> (CoordPair, float, int) | None:
         """Suggest the next move using minimax alpha beta."""
-        start_time = datetime.now()
         if self.options.alpha_beta:
+            self.turn_start_time = time.time()
             (score, move) = self.minmax_alphabeta(
                 self.options.max_depth,
                 self.next_player,
@@ -1063,23 +1071,16 @@ class Game:
                 MAX_HEURISTIC_SCORE,
             )
         else:
+            self.turn_start_time = time.time()
             (score, move) = self.minmax(
                 self.options.max_depth, self.next_player, self.next_player
             )
-        elapsed_seconds = (datetime.now() - start_time).total_seconds()
-        self.stats.total_seconds += elapsed_seconds
-        print(f"Heuristic score: {score}")
-        print(f"Move: {move}")
-        # print(f"Average recursive depth: {avg_depth:0.1f}")
-        print(f"Evals per depth: ", end="")
-        for k in sorted(self.stats.evaluations_per_depth.keys()):
-            print(f"{k}:{self.stats.evaluations_per_depth[k]} ", end="")
-        print()
-        total_evals = sum(self.stats.evaluations_per_depth.values())
-        if self.stats.total_seconds > 0:
-            print(f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
-        print(f"Elapsed time: {elapsed_seconds:0.1f}s")
-        return move
+        elapsed_time = time.time()-self.turn_start_time # need for log
+        self.after_half = False
+        move_candidates = self.move_candidates(self.next_player)
+        self.stats.branching_factor.append(sum(1 for i in move_candidates))
+        
+        return (move, elapsed_time, score)
 
     def post_move_to_broker(self, move: CoordPair):
         """Send a move to the game broker."""
@@ -1453,8 +1454,8 @@ class GameGUI:
     def ai_vs_manual(self):
         # Implement manual vs AI logic here
         self.game.options.game_type = GameType.CompVsDefender
-        success2, result2, coord2 = self.game.computer_turn()
-        self.game_AI_turn_function(success2, result2, coord2)
+        success2, result2, coord2, time, score = self.game.computer_turn()
+        self.game_AI_turn_function(success2, result2, coord2, time, score)
         print(self.game.options.game_type)
 
     def ai_vs_ai(self):
@@ -1468,7 +1469,7 @@ class GameGUI:
                 self.console.create_log(LogType.GameEnd, coord.dst, coord.src)
                 messagebox.showinfo("Game Over", f"{winner.name} wins!")
                 break
-            success, result, coord = self.game.computer_turn()
+            success, result, coord, time, score = self.game.computer_turn()
             if success:
                 self.turn_count += 1  # Increment turn count
                 self.update_buttons()
@@ -1513,8 +1514,8 @@ class GameGUI:
                     (self.game.options.game_type == GameType.AttackerVsComp
                     or self.game.options.game_type == GameType.CompVsDefender)
                 ):
-                    success2, result2, coord2 = self.game.computer_turn()
-                    self.game_AI_turn_function(success2, result2, coord2)
+                    success2, result2, coord2, time, score = self.game.computer_turn()
+                    self.game_AI_turn_function(success2, result2, coord2, time, score)
         elif self.selected_coord is not None:  # Attacking enemy unit or moving
             move = CoordPair(self.selected_coord, coord)
             success, result = self.game.human_turn(move)
@@ -1524,8 +1525,8 @@ class GameGUI:
                 (self.game.options.game_type == GameType.AttackerVsComp
                 or self.game.options.game_type == GameType.CompVsDefender)
             ):
-                success2, result2, coord2 = self.game.computer_turn()
-                self.game_AI_turn_function(success2, result2, coord2)
+                success2, result2, coord2, time, score = self.game.computer_turn()
+                self.game_AI_turn_function(success2, result2, coord2, time, score)
         else:
             if unit is not None:
                 self.console.create_log(LogType.OthersTurn, coord, self.selected_coord)
@@ -1548,12 +1549,13 @@ class GameGUI:
             self.console.create_log(result, coord, self.selected_coord)
             self.reset_turn(result)
 
-    def game_AI_turn_function(self, success, result, coord):
+    def game_AI_turn_function(self, success, result, coord, time, score):
         if success:
             self.update_buttons()
             self.turn_count += 1  # Increment turn count
             self.update_turn_label()  # Update the turn label
             self.console.create_log(result, coord.dst, coord.src)
+            self.console.create_ai_log(time, score)
 
         else:
             self.console.create_log(result, coord.dst, coord.src)
@@ -1644,7 +1646,7 @@ class Console:
             if log_type.value <= 6:
                 msg += f"(Turn #{self.game_gui.turn_count+1}) {self.game_gui.game.next_player.name}: Invalid Move - "
             else:
-                msg += f"(Turn #{self.game_gui.turn_count}) {self.game_gui.game.next_player.next().name}: "
+                msg += f"-----------------------------------\n(Turn #{self.game_gui.turn_count}) {self.game_gui.game.next_player.next().name}: "
         affected_unit = self.game_gui.game.get(coord_dst)
 
         match log_type.value:
@@ -1686,6 +1688,21 @@ class Console:
         self.insert_in_log(msg)
         if log_type.value == 11:
             self.download_logs()
+
+    def create_ai_log(self, elapsed_time, score):
+        evals_per_depth = self.game_gui.game.stats.evaluations_per_depth
+        msg = f"Action Time={round(elapsed_time,2)}s, Heuristic Score={score}\n"
+        msg += f"Cumul. Eval.: {sum(evals_per_depth.values())}\n"
+        msg += "Cumul. Eval. by depth: "
+        for k in sorted(evals_per_depth.keys()):
+            msg += f"[{k}]={evals_per_depth[k]}; "
+        msg += "\nCumul. Percent. Eval. by depth: "
+        for k in sorted(evals_per_depth.keys()):
+            msg += f"[{k}]={round((100*evals_per_depth[k]/float(sum(evals_per_depth.values()))), 2)}%; "
+        msg += f"\nAvg. Branching Factor: {round((sum(self.game_gui.game.stats.branching_factor)/float(self.game_gui.game.turns_played)), 2)}\n-----------------------------------"
+
+        print(msg)
+        self.insert_in_log(msg)
 
     def insert_in_log(self, msg):
         self.logs.config(state=tk.NORMAL)
