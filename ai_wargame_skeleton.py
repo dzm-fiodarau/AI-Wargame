@@ -814,6 +814,49 @@ class Game:
         return 90*adjacent_units-15*sum(distances_to_ai)
 
     def heuristic_e2(self, current_player):
+        base_unit = Unit()
+        vp1, tp1, fp1, pp1, aip1 = 0, 0, 0, 0, 0
+        vp2, tp2, fp2, pp2, aip2 = 0, 0, 0, 0, 0
+        score_tech = sum(base_unit.damage_table[1])+sum(base_unit.repair_table[1])
+        score_virus = sum(base_unit.damage_table[2])+sum(base_unit.repair_table[2])
+        score_prog = sum(base_unit.damage_table[3])+sum(base_unit.repair_table[3])
+        score_fw = sum(base_unit.damage_table[4])+sum(base_unit.repair_table[4])
+
+        # Loop through the game board
+        for row in self.board:
+            for unit in row:
+                if unit is not None and unit.is_alive():
+                    if unit.player == Player.Attacker:
+                        if unit.type == UnitType.Virus:
+                            vp1 += unit.health
+                        elif unit.type == UnitType.Tech:
+                            tp1 += unit.health
+                        elif unit.type == UnitType.Firewall:
+                            fp1 += unit.health
+                        elif unit.type == UnitType.Program:
+                            pp1 += unit.health
+                        elif unit.type == UnitType.AI:
+                            aip1 += unit.health
+                    elif unit.player == Player.Defender:
+                        if unit.type == UnitType.Virus:
+                            vp2 += unit.health
+                        elif unit.type == UnitType.Tech:
+                            tp2 += unit.health
+                        elif unit.type == UnitType.Firewall:
+                            fp2 += unit.health
+                        elif unit.type == UnitType.Program:
+                            pp2 += unit.health
+                        elif unit.type == UnitType.AI:
+                            aip2 += unit.health
+        # Calculate the heuristic score formula
+        score = (
+            1000*aip1-1000*aip2+10*(score_tech*tp1+score_virus*vp1+score_prog*pp1+score_fw*fp1)-10*(score_tech*tp2+score_virus*vp2+score_prog*pp2+score_fw*fp2)-(1440*self.options.max_turns/(self.options.max_turns-(self.turns_played/2-1)))
+        ) # TODO: add distance factors
+        print(f"options.max_turns={self.options.max_turns}, self.turnsplayed={self.turns_played}\n")
+
+        return score
+
+    def heuristic_e3(self, current_player):
         # Define unit values based on game-specific knowledge
         unit_values = {
             UnitType.AI: 10,
@@ -1804,7 +1847,7 @@ class Console:
 
     def create_ai_log(self, elapsed_time, score):
         evals_per_depth = self.game_gui.game.stats.evaluations_per_depth
-        msg = f"Action Time={round(elapsed_time,2)}s, Heuristic Score={self.game_gui.game.heuristic_e0()}(e0)/{self.game_gui.game.heuristic_e1()}(e1)\n"
+        msg = f"Action Time={round(elapsed_time,2)}s, Heuristic Score={self.game_gui.game.heuristic_e0()}(e0)/{self.game_gui.game.heuristic_e1()}(e1)/{self.game_gui.game.heuristic_e2(None)}(e2)\n"
         msg += f"Cumul. Eval.: {sum(evals_per_depth.values())}\n"
         msg += "Cumul. Eval. by depth: "
         for k in sorted(evals_per_depth.keys()):
