@@ -675,10 +675,10 @@ class Game:
         """Generate valid move candidates for the next player."""
         # Initialize an empty list to store valid move candidates
         valid_moves = []
-
         # Iterate through the board and check each cell for valid moves
         for row in range(self.options.dim):
             for col in range(self.options.dim):
+                enterSelfMove = True
                 unit = self.board[row][col]
                 # Check if the cell contains a unit owned by the current player
                 if unit is not None and unit.player == current_player:
@@ -690,6 +690,11 @@ class Game:
                             (is_valid, _) = self.is_valid_move(move)
                             if is_valid:
                                 valid_moves.append(move)
+                            if enterSelfMove:     
+                                moveSelf = CoordPair(src=Coord(row, col), dst=Coord(row, col))
+                                valid_moves.append(moveSelf)
+                                enterSelfMove=False
+
         # Return the list of valid move candidates
         return valid_moves
 
@@ -738,9 +743,9 @@ class Game:
         # if current_player == Player.Attacker:
         score = (
             3 * (vp1 + tp1 + fp1 + pp1)
-            + 9999 * aip1
+            - 9999 * aip1
             - 3 * (vp2 + tp2 + fp2 + pp2)
-            - 9999 * aip2
+            + 9999 * aip2
         )
         # else:
         #     score = (
@@ -1116,6 +1121,10 @@ class Game:
             elif heuristic == 2:
                 heuristic_value = self.heuristic_e2(current_player)
                 return heuristic_value, None
+            
+        #print(" New moves")
+        #for move in self.move_candidates(next_player):
+        #    print(move)
 
         move_candidates = self.move_candidates(next_player)
         self.stats.evaluations_per_depth[self.options.max_depth - depth] = sum(
