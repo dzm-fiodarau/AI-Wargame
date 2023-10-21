@@ -351,7 +351,7 @@ class Game:
         """Set contents of a board cell of the game at Coord."""
         if self.is_valid_coord(coord):
             self.board[coord.row][coord.col] = unit
-            if unit == UnitType.AI and unit.player==Player.Defender:
+            if unit == UnitType.AI and unit.player == Player.Defender:
                 self.def_ai_position = coord
 
     def remove_dead(self, coord: Coord):
@@ -690,10 +690,12 @@ class Game:
                             (is_valid, _) = self.is_valid_move(move)
                             if is_valid:
                                 valid_moves.append(move)
-                            if enterSelfMove:     
-                                moveSelf = CoordPair(src=Coord(row, col), dst=Coord(row, col))
+                            if enterSelfMove:
+                                moveSelf = CoordPair(
+                                    src=Coord(row, col), dst=Coord(row, col)
+                                )
                                 valid_moves.append(moveSelf)
-                                enterSelfMove=False
+                                enterSelfMove = False
 
         # Return the list of valid move candidates
         return valid_moves
@@ -741,11 +743,8 @@ class Game:
 
             # Calculate the heuristic score formula
         # if current_player == Player.Attacker:
-        score = (
-            3 * (vp1 + tp1 + fp1 + pp1)
-            - 9999 * aip1
-            - 3 * (vp2 + tp2 + fp2 + pp2)
-            + 9999 * aip2
+        score = (3 * vp1 + 3 * tp1 + 3 * fp1 + 3 * pp1 + 9999 * aip1) - (
+            3 * vp2 + 3 * tp2 + 3 * fp2 + 3 * pp2 + 9999 * aip2
         )
         # else:
         #     score = (
@@ -791,8 +790,8 @@ class Game:
                             aip2 += unit.health
         # Calculate the heuristic score formula
         score = (
-            (100*vp1 + 100*tp1 + 20*fp1 + 20*pp1 + 1000 * aip1)
-            - (100*vp2 + 100*tp2 + 20*fp2 + 20*pp2 + 1000 * aip2)
+            (100 * vp1 + 100 * tp1 + 20 * fp1 + 20 * pp1 + 10000 * aip1)
+            - (100 * vp2 + 100 * tp2 + 20 * fp2 + 20 * pp2 + 10000 * aip2)
             + self.get_virus_ai_factor()
         )
 
@@ -802,30 +801,37 @@ class Game:
     # and the opponent's AI keep more adjacent units
     def get_virus_ai_factor(self) -> int:
         distances_to_ai = []
-        i=0
+        i = 0
         for row in self.board:
-            j=0
+            j = 0
             for unit in row:
                 if unit is not None and unit.type == UnitType.Virus:
-                    distances_to_ai.append(abs(self.def_ai_position.col-j)+abs(self.def_ai_position.row-i)-1)
+                    distances_to_ai.append(
+                        abs(self.def_ai_position.col - j)
+                        + abs(self.def_ai_position.row - i)
+                        - 1
+                    )
                 j += 1
             i += 1
         adjacent_units = 0
         adjacent_coords = list(self.def_ai_position.iter_adjacent())
         for coord in adjacent_coords:
-            if self.get(coord) is not None and self.get(coord).player == Player.Defender:
+            if (
+                self.get(coord) is not None
+                and self.get(coord).player == Player.Defender
+            ):
                 adjacent_units += 1
 
-        return 90*adjacent_units-15*sum(distances_to_ai)
+        return 90 * adjacent_units - 15 * sum(distances_to_ai)
 
     def heuristic_e2(self, current_player):
         base_unit = Unit()
         vp1, tp1, fp1, pp1, aip1 = 0, 0, 0, 0, 0
         vp2, tp2, fp2, pp2, aip2 = 0, 0, 0, 0, 0
-        score_tech = sum(base_unit.damage_table[1])+sum(base_unit.repair_table[1])
-        score_virus = sum(base_unit.damage_table[2])+sum(base_unit.repair_table[2])
-        score_prog = sum(base_unit.damage_table[3])+sum(base_unit.repair_table[3])
-        score_fw = sum(base_unit.damage_table[4])+sum(base_unit.repair_table[4])
+        score_tech = sum(base_unit.damage_table[1]) + sum(base_unit.repair_table[1])
+        score_virus = sum(base_unit.damage_table[2]) + sum(base_unit.repair_table[2])
+        score_prog = sum(base_unit.damage_table[3]) + sum(base_unit.repair_table[3])
+        score_fw = sum(base_unit.damage_table[4]) + sum(base_unit.repair_table[4])
 
         # Loop through the game board
         for row in self.board:
@@ -855,9 +861,21 @@ class Game:
                             aip2 += unit.health
         # Calculate the heuristic score formula
         score = (
-            1000*aip1-1000*aip2+10*(score_tech*tp1+score_virus*vp1+score_prog*pp1+score_fw*fp1)-10*(score_tech*tp2+score_virus*vp2+score_prog*pp2+score_fw*fp2)-(1440*self.options.max_turns/(self.options.max_turns-(self.turns_played/2-1)))
-        ) # TODO: add distance factors
-        print(f"options.max_turns={self.options.max_turns}, self.turnsplayed={self.turns_played}\n")
+            1000 * aip1
+            - 1000 * aip2
+            + 10
+            * (score_tech * tp1 + score_virus * vp1 + score_prog * pp1 + score_fw * fp1)
+            - 10
+            * (score_tech * tp2 + score_virus * vp2 + score_prog * pp2 + score_fw * fp2)
+            - (
+                1440
+                * self.options.max_turns
+                / (self.options.max_turns - (self.turns_played / 2 - 1))
+            )
+        )  # TODO: add distance factors
+        print(
+            f"options.max_turns={self.options.max_turns}, self.turnsplayed={self.turns_played}\n"
+        )
 
         return score
 
@@ -1121,10 +1139,10 @@ class Game:
             elif heuristic == 2:
                 heuristic_value = self.heuristic_e2(current_player)
                 return heuristic_value, None
-            
-        #print(" New moves")
-        #for move in self.move_candidates(next_player):
-        #    print(move)
+
+        print(f" New moves depth {depth} {next_player}")
+        for move in self.move_candidates(next_player):
+            print(move)
 
         move_candidates = self.move_candidates(next_player)
         self.stats.evaluations_per_depth[self.options.max_depth - depth] = sum(
@@ -1134,9 +1152,14 @@ class Game:
             if (time.time() - self.turn_start_time) / self.options.max_time >= 0.90:
                 self.after_half = True
 
-        if current_player == next_player:  # Maximizer
-            max_eval = MIN_HEURISTIC_SCORE
-            best_move = None
+        if next_player == Player.Attacker:
+            value = MIN_HEURISTIC_SCORE
+        else:
+            value = MAX_HEURISTIC_SCORE
+
+        best_move = None
+
+        if next_player == Player.Attacker:  # Maximizer
             for move in move_candidates:
                 game_clone = self.clone()
                 (success, result) = game_clone.perform_move(move)
@@ -1153,8 +1176,8 @@ class Game:
                     )
 
                     # Update max_eval and best_move if needed
-                    if eval >= max_eval:
-                        max_eval = eval
+                    if eval >= value:
+                        value = eval
                         best_move = move
 
                     # Update alpha
@@ -1169,12 +1192,7 @@ class Game:
                         ) / self.options.max_time >= 0.98 and best_move != None:
                             break
 
-            return max_eval, best_move
-
         else:  # Minimizer
-            min_eval = MAX_HEURISTIC_SCORE
-            best_move = None
-
             for move in move_candidates:
                 game_clone = self.clone()
                 (success, result) = game_clone.perform_move(move)
@@ -1191,8 +1209,8 @@ class Game:
                     )
 
                     # Update min_eval and best_move if needed
-                    if eval < min_eval:
-                        min_eval = eval
+                    if eval < value:
+                        value = eval
                         best_move = move
 
                     # Update beta
@@ -1207,7 +1225,7 @@ class Game:
                         ) / self.options.max_time >= 0.98 and best_move != None:
                             break
 
-            return min_eval, best_move
+        return value, best_move
 
     def suggest_move(self) -> (CoordPair, float, int) | None:
         """Suggest the next move using minimax alpha beta."""
