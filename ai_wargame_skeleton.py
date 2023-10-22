@@ -806,10 +806,10 @@ class Game:
             j = 0
             for unit in row:
                 if unit is not None and unit.type == UnitType.Virus:
-                    distances_to_ai.append(
-                        abs(self.def_ai_position.col - j)
+                    distances_to_ai.append(7-
+                        (abs(self.def_ai_position.col - j)
                         + abs(self.def_ai_position.row - i)
-                        - 1
+                        - 1)
                     )
                 j += 1
             i += 1
@@ -822,7 +822,7 @@ class Game:
             ):
                 adjacent_units += 1
 
-        return 90 * adjacent_units - 15 * sum(distances_to_ai)
+        return 90 * sum(distances_to_ai)-90 * adjacent_units 
 
     def heuristic_e2(self, current_player):
         base_unit = Unit()
@@ -861,8 +861,8 @@ class Game:
                             aip2 += unit.health
         # Calculate the heuristic score formula
         score = (
-            1000 * aip1
-            - 1000 * aip2
+            10000 * aip1
+            - 10000 * aip2
             + 10
             * (score_tech * tp1 + score_virus * vp1 + score_prog * pp1 + score_fw * fp1)
             - 10
@@ -878,6 +878,9 @@ class Game:
         )
 
         return score
+    
+    def get_distance_factor(self):
+        return 0
 
     def heuristic_e3(self, current_player):
         # Define unit values based on game-specific knowledge
@@ -1140,9 +1143,9 @@ class Game:
                 heuristic_value = self.heuristic_e2(current_player)
                 return heuristic_value, None
 
-        print(f" New moves depth {depth} {next_player}")
-        for move in self.move_candidates(next_player):
-            print(move)
+        # print(f" New moves depth {depth} {next_player}")
+        # for move in self.move_candidates(next_player):
+        #     print(move)
 
         move_candidates = self.move_candidates(next_player)
         self.stats.evaluations_per_depth[self.options.max_depth - depth] = sum(
@@ -1152,14 +1155,10 @@ class Game:
             if (time.time() - self.turn_start_time) / self.options.max_time >= 0.90:
                 self.after_half = True
 
-        if next_player == Player.Attacker:
-            value = MIN_HEURISTIC_SCORE
-        else:
-            value = MAX_HEURISTIC_SCORE
-
         best_move = None
 
         if next_player == Player.Attacker:  # Maximizer
+            value = MIN_HEURISTIC_SCORE
             for move in move_candidates:
                 game_clone = self.clone()
                 (success, result) = game_clone.perform_move(move)
@@ -1168,7 +1167,7 @@ class Game:
 
                     # Recursively evaluate the move in the copied game state
                     eval, _ = game_clone.minmax_alphabeta(
-                        depth - 1 if depth <= 1 else depth - 1 - self.depth_penalty,
+                        depth - 1 if depth <= 1+self.depth_penalty else depth - 1 - self.depth_penalty,
                         current_player,
                         game_clone.next_player,
                         alpha,
@@ -1193,6 +1192,7 @@ class Game:
                             break
 
         else:  # Minimizer
+            value = MAX_HEURISTIC_SCORE
             for move in move_candidates:
                 game_clone = self.clone()
                 (success, result) = game_clone.perform_move(move)
@@ -1201,7 +1201,7 @@ class Game:
 
                     # Recursively evaluate the move in the copied game state
                     eval, _ = game_clone.minmax_alphabeta(
-                        depth - 1 if depth <= 1 else depth - 1 - self.depth_penalty,
+                        depth - 1 if depth <= 1+self.depth_penalty else depth - 1 - self.depth_penalty,
                         current_player,
                         game_clone.next_player,
                         alpha,
@@ -1209,7 +1209,7 @@ class Game:
                     )
 
                     # Update min_eval and best_move if needed
-                    if eval < value:
+                    if eval <= value:
                         value = eval
                         best_move = move
 
@@ -1560,9 +1560,10 @@ class GameGUI:
         self.console.logs.config(state=tk.NORMAL)
         self.console.logs.delete("1.0", tk.END)
         self.console.logs.config(state=tk.DISABLED)
-        self.computer_options()
         self.heuristic_options()
-        self.console.create_initial_log()
+        self.computer_options()
+        if not self.game.options.game_type == GameType.CompVsDefender:
+            self.console.create_initial_log()
         for i in range(self.game.options.max_depth):
             self.game.stats.evaluations_per_depth[i] = 0
         self.game.stats.branching_factor.clear()
@@ -1634,6 +1635,7 @@ class GameGUI:
     def ai_vs_manual(self):
         # Implement manual vs AI logic here
         self.game.options.game_type = GameType.CompVsDefender
+        self.console.create_initial_log()
         success2, result2, coord2, time, score = self.game.computer_turn()
         self.game_AI_turn_function(success2, result2, coord2, time, score)
         print(self.game.options.game_type)
