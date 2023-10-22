@@ -741,20 +741,11 @@ class Game:
                         elif unit.type == UnitType.AI:
                             aip2 += 1
 
-            # Calculate the heuristic score formula
-        # if current_player == Player.Attacker:
-        score = (3 * vp1 + 3 * tp1 + 3 * fp1 + 3 * pp1 + 9999 * aip1) - (
-            3 * vp2 + 3 * tp2 + 3 * fp2 + 3 * pp2 + 9999 * aip2
+        # Calculate the heuristic score formula
+        score = 3*(vp1 + tp1 + fp1 +  pp1 + 3333 * aip1) - 3*(
+            vp2 + tp2 + fp2 + pp2 + 3333 * aip2
         )
-        # else:
-        #     score = (
-        #         3 * (vp2 + tp2 + fp2 + pp2)
-        #         + 9999 * aip2
-        #         - 3 * (vp1 + tp1 + fp1 + pp1)
-        #         - 9999 * aip1
-        #     )
 
-        # print(f"Next player: {next_player}  heuristic cost at node: {score}")
         return score
 
     def heuristic_e1(self):
@@ -867,20 +858,34 @@ class Game:
             * (score_tech * tp1 + score_virus * vp1 + score_prog * pp1 + score_fw * fp1)
             - 10
             * (score_tech * tp2 + score_virus * vp2 + score_prog * pp2 + score_fw * fp2)
-            - (
-                1440
-                * self.options.max_turns
-                / (self.options.max_turns - (self.turns_played / 2 - 1))
-            )
-        )  # TODO: add distance factors
-        print(
-            f"options.max_turns={self.options.max_turns}, self.turnsplayed={self.turns_played}\n"
+            + 2.5*self.get_distance_factor()
+            - 1788
         )
 
         return score
     
     def get_distance_factor(self):
-        return 0
+        unit_distance_scores = []
+        i = 0
+        for row in self.board:
+            j = 0
+            for unit in row:
+                if unit is not None:
+                    score = 0
+                    i2 = 0
+                    for row2 in self.board:
+                        j2 = 0
+                        for unit2 in row2:
+                            if unit2 is not None and (i != i2 or j != j2) and unit2.player != unit.player:
+                                distance = 7-(abs(i-i2)+ abs(j-j2)- 1)
+                                attack_score = unit.damage_table[unit.type.value][unit2.type.value] - unit.damage_table[unit2.type.value][unit.type.value]
+                                score += distance*attack_score
+                            j2 += 1
+                        i2 +=1
+                    unit_distance_scores.append(score if unit.player == Player.Attacker else -score)
+                j += 1
+            i += 1
+        return sum(unit_distance_scores)
 
     def heuristic_e3(self, current_player):
         # Define unit values based on game-specific knowledge
@@ -1077,7 +1082,7 @@ class Game:
                     )
 
                     # Update max_eval and best_move if needed
-                    if eval >= max_eval:
+                    if eval > max_eval:
                         max_eval = eval
                         best_move = move
                     if self.after_half:
@@ -1175,7 +1180,7 @@ class Game:
                     )
 
                     # Update max_eval and best_move if needed
-                    if eval >= value:
+                    if eval > value:
                         value = eval
                         best_move = move
 
@@ -1209,7 +1214,7 @@ class Game:
                     )
 
                     # Update min_eval and best_move if needed
-                    if eval <= value:
+                    if eval < value:
                         value = eval
                         best_move = move
 
@@ -1719,6 +1724,11 @@ class GameGUI:
             else:
                 self.console.create_log(LogType.SelectEmpty, coord, self.selected_coord)
             self.reset_turn(LogType.SelectEmpty)
+        
+        if self.game.has_winner() is not None:
+                        winner = self.game.has_winner()
+                        self.console.create_log(LogType.GameEnd, coord, self.selected_coord)
+                        messagebox.showinfo("Game Over", f"{winner.name} wins!")
 
     def game_manual_turn_function(self, success, result, coord):
         if success:
@@ -1876,7 +1886,7 @@ class Console:
 
     def create_ai_log(self, elapsed_time, score):
         evals_per_depth = self.game_gui.game.stats.evaluations_per_depth
-        msg = f"Action Time={round(elapsed_time,2)}s, Heuristic Score={self.game_gui.game.heuristic_e0()}(e0)/{self.game_gui.game.heuristic_e1()}(e1)/{self.game_gui.game.heuristic_e2(None)}(e2)\n"
+        msg = f"Action Time={round(elapsed_time,2)}s, Heuristic Score={self.game_gui.game.heuristic_e0()}(e0)/{self.game_gui.game.heuristic_e1()}(e1)/{round(self.game_gui.game.heuristic_e2(None), 2)}(e2)\n"
         msg += f"Cumul. Eval.: {sum(evals_per_depth.values())}\n"
         msg += "Cumul. Eval. by depth: "
         for k in sorted(evals_per_depth.keys()):
