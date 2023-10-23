@@ -305,7 +305,7 @@ class Game:
     def __post_init__(self):
         """Automatically called after class init to set up the default board state."""
         self.reset_board()
-        for i in range(self.options.max_depth):
+        for i in range(self.options.max_depth+1):
             self.stats.evaluations_per_depth[i] = 0
 
     def reset_board(self):
@@ -904,6 +904,7 @@ class Game:
     def minmax(
         self, depth, current_player, next_player
     ) -> Tuple[int, CoordPair | None, float]:
+        self.stats.evaluations_per_depth[self.options.max_depth - depth] += 1
         if (
             depth == 0
             or self._attacker_has_ai == False
@@ -926,13 +927,9 @@ class Game:
                 return heuristic_value, None
 
         move_candidates = self.move_candidates(next_player)
-        self.stats.evaluations_per_depth[self.options.max_depth - depth] += sum(
-            1 for i in move_candidates
-        )
         if not self.after_half:
             if (time.time() - self.turn_start_time) / self.options.max_time >= 0.90:
                 self.after_half = True
-                self.depth_penalty = 1
 
         if current_player == Player.Attacker:  # (Maximizer)
             max_eval = MIN_HEURISTIC_SCORE
@@ -998,6 +995,7 @@ class Game:
     def minmax_alphabeta(
         self, depth, current_player, next_player, alpha, beta
     ) -> Tuple[int, CoordPair | None, float]:
+        self.stats.evaluations_per_depth[self.options.max_depth - depth] += 1
         if (
             depth == 0
             or self._attacker_has_ai == False
@@ -1024,13 +1022,9 @@ class Game:
         #     print(move)
 
         move_candidates = self.move_candidates(next_player)
-        self.stats.evaluations_per_depth[self.options.max_depth - depth] = sum(
-            1 for i in move_candidates
-        )
         if not self.after_half:
             if (time.time() - self.turn_start_time) / self.options.max_time >= 0.90:
                 self.after_half = True
-                self.depth_penalty = 1
 
         best_move = None
 
@@ -1445,7 +1439,8 @@ class GameGUI:
         self.computer_options()
         if not self.game.options.game_type == GameType.CompVsDefender:
             self.console.create_initial_log()
-        for i in range(self.game.options.max_depth):
+        self.game.stats.evaluations_per_depth.clear()
+        for i in range(self.game.options.max_depth+1):
             self.game.stats.evaluations_per_depth[i] = 0
         self.game.stats.branching_factor.clear()
 
@@ -1766,10 +1761,10 @@ class Console:
         msg += f"Cumul. Eval.: {sum(evals_per_depth.values())}\n"
         msg += "Cumul. Eval. by depth: "
         for k in sorted(evals_per_depth.keys()):
-            msg += f"[{k+1}]={evals_per_depth[k]}; "
+            msg += f"[{k}]={evals_per_depth[k]}; "
         msg += "\nCumul. Percent. Eval. by depth: "
         for k in sorted(evals_per_depth.keys()):
-            msg += f"[{k+1}]={round((100*evals_per_depth[k]/float(sum(evals_per_depth.values()))), 2)}%; "
+            msg += f"[{k}]={round((100*evals_per_depth[k]/float(sum(evals_per_depth.values()))), 2)}%; "
         msg += f"\nAvg. Branching Factor: {round((sum(self.game_gui.game.stats.branching_factor)/float(self.game_gui.game.turns_played)), 2)}\n-----------------------------------"
 
         print(msg)
