@@ -932,6 +932,7 @@ class Game:
         if not self.after_half:
             if (time.time() - self.turn_start_time) / self.options.max_time >= 0.90:
                 self.after_half = True
+                self.depth_penalty = 1
 
         if current_player == Player.Attacker:  # (Maximizer)
             max_eval = MIN_HEURISTIC_SCORE
@@ -1029,6 +1030,7 @@ class Game:
         if not self.after_half:
             if (time.time() - self.turn_start_time) / self.options.max_time >= 0.90:
                 self.after_half = True
+                self.depth_penalty = 1
 
         best_move = None
 
@@ -1079,7 +1081,7 @@ class Game:
                     # Recursively evaluate the move in the copied game state
                     eval, _ = game_clone.minmax_alphabeta(
                         depth - 1
-                        if depth <= 1 + self.depth_penalty
+                        if depth <= 1
                         else depth - 1 - self.depth_penalty,
                         current_player,
                         game_clone.next_player,
@@ -1599,7 +1601,7 @@ class GameGUI:
                 self.console.create_log(LogType.SelectEmpty, coord, self.selected_coord)
             self.reset_turn(LogType.SelectEmpty)
 
-        if self.game.has_winner() is not None:
+        if self.game.has_winner() is not None and (self.game.options.game_type==GameType.AttackerVsComp or self.game.options.game_type==GameType.CompVsDefender):
             winner = self.game.has_winner()
             self.console.create_log(LogType.GameEnd, coord, self.selected_coord)
             messagebox.showinfo("Game Over", f"{winner.name} wins!")
