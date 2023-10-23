@@ -742,7 +742,7 @@ class Game:
                             aip2 += 1
 
         # Calculate the heuristic score formula
-        score = 3*(vp1 + tp1 + fp1 +  pp1 + 3333 * aip1) - 3*(
+        score = 3 * (vp1 + tp1 + fp1 + pp1 + 3333 * aip1) - 3 * (
             vp2 + tp2 + fp2 + pp2 + 3333 * aip2
         )
 
@@ -797,10 +797,13 @@ class Game:
             j = 0
             for unit in row:
                 if unit is not None and unit.type == UnitType.Virus:
-                    distances_to_ai.append(7-
-                        (abs(self.def_ai_position.col - j)
-                        + abs(self.def_ai_position.row - i)
-                        - 1)
+                    distances_to_ai.append(
+                        7
+                        - (
+                            abs(self.def_ai_position.col - j)
+                            + abs(self.def_ai_position.row - i)
+                            - 1
+                        )
                     )
                 j += 1
             i += 1
@@ -813,7 +816,7 @@ class Game:
             ):
                 adjacent_units += 1
 
-        return 90 * sum(distances_to_ai)-90 * adjacent_units 
+        return 90 * sum(distances_to_ai) - 90 * adjacent_units
 
     def heuristic_e2(self, current_player):
         base_unit = Unit()
@@ -858,12 +861,12 @@ class Game:
             * (score_tech * tp1 + score_virus * vp1 + score_prog * pp1 + score_fw * fp1)
             - 10
             * (score_tech * tp2 + score_virus * vp2 + score_prog * pp2 + score_fw * fp2)
-            + 2.5*self.get_distance_factor()
+            + 2.5 * self.get_distance_factor()
             - 1788
         )
 
         return score
-    
+
     def get_distance_factor(self):
         unit_distance_scores = []
         i = 0
@@ -876,160 +879,27 @@ class Game:
                     for row2 in self.board:
                         j2 = 0
                         for unit2 in row2:
-                            if unit2 is not None and (i != i2 or j != j2) and unit2.player != unit.player:
-                                distance = 7-(abs(i-i2)+ abs(j-j2)- 1)
-                                attack_score = unit.damage_table[unit.type.value][unit2.type.value] - unit.damage_table[unit2.type.value][unit.type.value]
-                                score += distance*attack_score
+                            if (
+                                unit2 is not None
+                                and (i != i2 or j != j2)
+                                and unit2.player != unit.player
+                            ):
+                                distance = 7 - (abs(i - i2) + abs(j - j2) - 1)
+                                attack_score = (
+                                    unit.damage_table[unit.type.value][unit2.type.value]
+                                    - unit.damage_table[unit2.type.value][
+                                        unit.type.value
+                                    ]
+                                )
+                                score += distance * attack_score
                             j2 += 1
-                        i2 +=1
-                    unit_distance_scores.append(score if unit.player == Player.Attacker else -score)
+                        i2 += 1
+                    unit_distance_scores.append(
+                        score if unit.player == Player.Attacker else -score
+                    )
                 j += 1
             i += 1
         return sum(unit_distance_scores)
-
-    def heuristic_e3(self, current_player):
-        # Define unit values based on game-specific knowledge
-        unit_values = {
-            UnitType.AI: 10,
-            UnitType.Tech: 5,
-            UnitType.Firewall: 3,
-            UnitType.Program: 2,
-            UnitType.Virus: 1,
-        }
-
-        # Define positional advantage values for specific positions on the board
-        positional_values = [
-            [1, 1, 1, 1, 1],
-            [1, 2, 2, 2, 1],
-            [1, 2, 3, 2, 1],
-            [1, 2, 2, 2, 1],
-            [1, 1, 1, 1, 1],
-        ]
-
-        # Initialize scores for each player
-        attacker_score = 0
-        defender_score = 0
-
-        # Loop through the game board
-        for row in range(len(self.board)):
-            for col in range(len(self.board[row])):
-                unit = self.board[row][col]
-                if unit is not None and unit.is_alive():
-                    if unit.player == Player.Attacker:
-                        # Add unit value and positional advantage
-                        attacker_score += (
-                            unit_values[unit.type] * positional_values[row][col]
-                        )
-                    elif unit.player == Player.Defender:
-                        # Add unit value and positional advantage
-                        defender_score += (
-                            unit_values[unit.type] * positional_values[row][col]
-                        )
-
-        # Consider other factors, such as objectives or long-term goals
-        objectives_score = self.evaluate_objectives(current_player)
-
-        # Calculate the heuristic score, considering objectives
-        score = attacker_score - defender_score + objectives_score
-        # print(f"---------------------------")
-        # print(f"Score: {score}")
-        # print(f"attacker_score: {score}")
-        # print(f"defender_score: {score}")
-        # print(f"objectives_score: {score}")
-
-        return score
-
-    def evaluate_objectives(self, current_player):
-        # Define your objectives evaluation logic here
-        # Calculate the score based on the progress toward achieving objectives
-        # Consider factors like capturing key positions, reaching specific conditions, or avoiding enemy AI units
-        # Return an objective score, which can be positive or negative based on how well the player is doing
-
-        # Example: Calculate an objective score based on the proximity to enemy AI units
-        objective_score = 0
-
-        for row in range(len(self.board)):
-            for col in range(len(self.board[row])):
-                unit = self.board[row][col]
-                if unit is not None and unit.is_alive():
-                    if unit.player != current_player and unit.type == UnitType.AI:
-                        # Calculate the Manhattan distance to this enemy AI unit
-                        distance = abs(
-                            row - self.get_closest_enemy_ai_row(current_player)
-                        )
-                        distance += abs(
-                            col - self.get_closest_enemy_ai_col(current_player)
-                        )
-
-                        # Penalize the player for being closer to an enemy AI unit
-                        # Adjust the factor (-5) as needed to control the penalty strength
-                        objective_score -= 5 * distance
-
-        return objective_score
-
-    def get_closest_enemy_ai_row(self, current_player):
-        # Find the row of the closest enemy AI unit to the current player
-        closest_row = None
-        closest_distance = float("inf")
-
-        for row in range(len(self.board)):
-            for col in range(len(self.board[row])):
-                unit = self.board[row][col]
-                if (
-                    unit is not None
-                    and unit.is_alive()
-                    and unit.player != current_player
-                    and unit.type == UnitType.AI
-                ):
-                    # Calculate the Manhattan distance to this enemy AI unit
-                    distance = abs(row - self.get_ai_row(unit))
-                    distance += abs(col - self.get_ai_col(unit))
-
-                    # Update the closest enemy AI unit
-                    if distance < closest_distance:
-                        closest_row = row
-                        closest_distance = distance
-
-        return closest_row
-
-    def get_closest_enemy_ai_col(self, current_player):
-        # Find the column of the closest enemy AI unit to the current player
-        closest_col = None
-        closest_distance = float("inf")
-
-        for row in range(len(self.board)):
-            for col in range(len(self.board[row])):
-                unit = self.board[row][col]
-                if (
-                    unit is not None
-                    and unit.is_alive()
-                    and unit.player != current_player
-                    and unit.type == UnitType.AI
-                ):
-                    # Calculate the Manhattan distance to this enemy AI unit
-                    distance = abs(row - self.get_ai_row(unit))
-                    distance += abs(col - self.get_ai_col(unit))
-
-                    # Update the closest enemy AI unit
-                    if distance < closest_distance:
-                        closest_col = col
-                        closest_distance = distance
-
-        return closest_col
-
-    def get_ai_row(self, ai_unit):
-        # Get the row of the given AI unit
-        for row in range(len(self.board)):
-            for col in range(len(self.board[row])):
-                if self.board[row][col] == ai_unit:
-                    return row
-
-    def get_ai_col(self, ai_unit):
-        # Get the column of the given AI unit
-        for row in range(len(self.board)):
-            for col in range(len(self.board[row])):
-                if self.board[row][col] == ai_unit:
-                    return col
 
     def minmax(
         self, depth, current_player, next_player
@@ -1172,7 +1042,9 @@ class Game:
 
                     # Recursively evaluate the move in the copied game state
                     eval, _ = game_clone.minmax_alphabeta(
-                        depth - 1 if depth <= 1+self.depth_penalty else depth - 1 - self.depth_penalty,
+                        depth - 1
+                        if depth <= 1 + self.depth_penalty
+                        else depth - 1 - self.depth_penalty,
                         current_player,
                         game_clone.next_player,
                         alpha,
@@ -1206,7 +1078,9 @@ class Game:
 
                     # Recursively evaluate the move in the copied game state
                     eval, _ = game_clone.minmax_alphabeta(
-                        depth - 1 if depth <= 1+self.depth_penalty else depth - 1 - self.depth_penalty,
+                        depth - 1
+                        if depth <= 1 + self.depth_penalty
+                        else depth - 1 - self.depth_penalty,
                         current_player,
                         game_clone.next_player,
                         alpha,
@@ -1724,11 +1598,11 @@ class GameGUI:
             else:
                 self.console.create_log(LogType.SelectEmpty, coord, self.selected_coord)
             self.reset_turn(LogType.SelectEmpty)
-        
+
         if self.game.has_winner() is not None:
-                        winner = self.game.has_winner()
-                        self.console.create_log(LogType.GameEnd, coord, self.selected_coord)
-                        messagebox.showinfo("Game Over", f"{winner.name} wins!")
+            winner = self.game.has_winner()
+            self.console.create_log(LogType.GameEnd, coord, self.selected_coord)
+            messagebox.showinfo("Game Over", f"{winner.name} wins!")
 
     def game_manual_turn_function(self, success, result, coord):
         if success:
