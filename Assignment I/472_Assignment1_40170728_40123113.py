@@ -2,7 +2,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import imageio
+import math
 from sklearn.model_selection import train_test_split
+from sklearn import tree
+import graphviz
 
 penguins = pd.read_csv("Assignment I/penguins.csv")
 abalones = pd.read_csv("Assignment I/abalone.csv")
@@ -24,17 +27,27 @@ def main():
 
     # POINT 2 OF ASSIGNMENT INSTRUCTIONS
     #############################################
-    save_graphic(penguins, "penguin-classes")
-    save_graphic(abalones, "abalone-classes")
+    penguins_output_percent = save_graphic(penguins, "penguin-classes")
+    abalones_output_percent = save_graphic(abalones, "abalone-classes")
 
     # POINT 3 OF ASSIGNMENT INSTRUCTIONS
-    # Switch between the two lines below depending if you want dummy-data or self-categoried data for Penguins
+    # Switch between the two lines below depending if you want dummy-data or self-categorized data for Penguins
     X_penguins_train, X_penguins_test, y_penguins_train, y_penguins_test = train_test_split(penguin_dummy_num_attributes, penguins.iloc[:, 0])
     #X_penguins_train, X_penguins_test, y_penguins_train, y_penguins_test = train_test_split(penguin_num_attributes, penguins.iloc[:, 0])
-    
-    print(f"PENGUINS:X_train={X_penguins_train.shape}; X_test={X_penguins_test.shape}; y_train={y_penguins_train.shape}; y_test={y_penguins_test.shape};\n")
     X_abalones_train, X_abalones_test, y_abalones_train, y_abalones_test = train_test_split(abalone_num_attributes, abalones.iloc[:, 0])
-    print(f"ABALONES:X_train={X_abalones_train.shape}; X_test={X_abalones_test.shape}; y_train={y_abalones_train.shape}; y_test={y_abalones_test.shape};\n")
+    
+    # print(f"PENGUINS:X_train={X_penguins_train.shape}; X_test={X_penguins_test.shape}; y_train={y_penguins_train.shape}; y_test={y_penguins_test.shape};\n")
+    # print(f"ABALONES:X_train={X_abalones_train.shape}; X_test={X_abalones_test.shape}; y_train={y_abalones_train.shape}; y_test={y_abalones_test.shape};\n")
+
+    # DECIDE ON FEATURES
+    dtc_penguins = tree.DecisionTreeClassifier(criterion="entropy")
+    dtc_penguins.fit(X_penguins_train, y_penguins_train)
+    dot_data = tree.export_graphviz(dtc_penguins, out_file=None,
+    feature_names=penguin_dummy_num_attributes.keys(),
+    class_names=penguins.iloc[:, 0].unique(),
+    filled=True, rounded=True)
+    graph = graphviz.Source(dot_data)
+    graph.render("mytree")
 
 def save_graphic(df : pd.DataFrame, type):
     df_output = tuple(df.iloc[:, 0].unique())
@@ -54,6 +67,27 @@ def save_graphic(df : pd.DataFrame, type):
     type += ".png"
     fig.savefig(type)
     plt.close(fig)
+    return output_percent
+
+
+# NOT NEEDED scikit-learn does it for us
+    # h_penguins = 0
+    # h_abalones = 0
+    # for nbr in penguins_output_percent:
+    #     h_penguins += -((nbr/100)*math.log2(nbr/100))
+    # for nbr in abalones_output_percent:
+    #     h_abalones += -((nbr/100)*math.log2(nbr/100))
+def get_best_gain(df : pd.DataFrame, h):
+    output_key = df.keys()[0]
+    info_gains = []
+    for key in df.keys():
+        inter_df = df.get([output_key, key])
+        h_key = 0
+        for value in df[key].unique():
+            h_key += 0
+        info_gains.append(h-h_key)
+
+
 
 ##############################################################################################################
 
