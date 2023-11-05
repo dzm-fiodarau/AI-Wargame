@@ -67,6 +67,7 @@ def main():
     # print(f"ABALONES:X_train={X_abalones_train.shape}; X_test={X_abalones_test.shape}; y_train={y_abalones_train.shape}; y_test={y_abalones_test.shape};\n")
 
     # DECIDE ON FEATURES
+    # 4A: Train and evaluate the base DT
     dtc_penguins = tree.DecisionTreeClassifier(criterion="entropy")
     dtc_penguins.fit(X_penguins_train, y_penguins_train)
     dot_data = tree.export_graphviz(
@@ -78,7 +79,92 @@ def main():
         rounded=True,
     )
     graph = graphviz.Source(dot_data)
-    graph.render("mytree")
+    # graph.render("mytree")
+
+    # POINT 4A: Train the Base-DT for the Penguin dataset
+    dtc_penguins_1 = tree.DecisionTreeClassifier(criterion="entropy")
+    dtc_penguins_1.fit(X_penguins_train, y_penguins_train)
+
+    # Visualizing the tree - limited to depth for clearer visualization
+    plt.figure(figsize=(20, 10))  # Set figure size for better readability
+    tree.plot_tree(
+        dtc_penguins_1,
+        filled=True,
+        rounded=True,
+        feature_names=penguin_num_attributes.columns,
+        class_names=penguins.iloc[:, 0].unique(),
+    )  # Limit depth to 3 for visualization, remove to visualize the full tree
+    plt.savefig("penguins_decision_tree.png")  # Save the figure to a file
+    # plt.show()  # Display the figure inline
+
+    # 4A: Train the Base-DT for the Abalones dataset
+    dtc_abalones = tree.DecisionTreeClassifier(criterion="entropy")
+    dtc_abalones.fit(X_abalones_train, y_abalones_train)
+
+    # Visualizing the tree - limited to depth for clearer visualization
+    plt.figure(figsize=(20, 10))  # Set figure size for better readability
+    tree.plot_tree(
+        dtc_abalones,
+        filled=True,
+        rounded=True,
+        feature_names=abalone_num_attributes.columns,
+        class_names=abalones.iloc[:, 0].unique(),
+        max_depth=3,
+    )  # Limit depth to 3 for visualization, remove to visualize the full tree
+    plt.savefig("abalone_decision_tree.png")  # Save the figure to a file
+    # plt.show()  # Display the figure inline
+
+    # 4A: Train the Base-DT for the Penguins dataset
+    train_and_evaluate_classifier(
+        X_penguins_train,
+        X_penguins_test,
+        y_penguins_train,
+        y_penguins_test,
+        dtc_penguins_1,
+        "Base-DT",
+        "penguins",
+        "best_param_BASE_MLP",
+    )
+    # 4A: Train the Base-DT for the Abalones dataset
+    train_and_evaluate_classifier(
+        X_abalones_train,
+        X_abalones_test,
+        y_abalones_train,
+        y_abalones_test,
+        dtc_abalones,
+        "Base-DT",
+        "abalones",
+        "best_param_BASE_MLP",
+    )
+
+    # 4B: Train the Base-DT for the Penguins dataset
+    top_DT_Penguins = perform_grid_search_Top_DT(
+        X_penguins_train, y_penguins_train, "penguins"
+    )
+    train_and_evaluate_classifier(
+        X_penguins_train,
+        X_penguins_test,
+        y_penguins_train,
+        y_penguins_test,
+        top_DT_Penguins,
+        "Top-DT",
+        "penguins",
+        best_param_TOP_DT,
+    )
+    # 4B: Train the Base-DT for the Abalones dataset
+    top_DT_abalones = perform_grid_search_Top_DT(
+        X_abalones_train, y_abalones_train, "abalones"
+    )
+    train_and_evaluate_classifier(
+        X_abalones_train,
+        X_abalones_test,
+        y_abalones_train,
+        y_abalones_test,
+        top_DT_abalones,
+        "Top-DT",
+        "abalones",
+        best_param_TOP_DT,
+    )
 
     # 4C: Train and evaluate the base MLP classifier
     base_mlp = MLPClassifier(
@@ -122,7 +208,7 @@ def main():
     )
 
     # 4D: Perform grid search to find the top MLP
-    top_mlp_Abalones = perform_grid_search(X_penguins_train, y_penguins_train)
+    top_mlp_Abalones = perform_grid_search(X_abalones_train, y_abalones_train)
     # 4D: Train and evaluate the top MLP classifier with the best parameters found
     train_and_evaluate_classifier(
         X_abalones_train,
@@ -201,6 +287,9 @@ def train_and_evaluate_classifier(
 
     accuracy = accuracy_score(y_test, predictions)
 
+    macro_f1 = class_report["macro avg"]["f1-score"]
+    weighted_f1 = class_report["weighted avg"]["f1-score"]
+
     with open(f"{category}-performance-{classifier_name}.txt", "a") as file:
         file.write(
             f"A) --- {category}_{classifier_name} --- Hyper-Parameters: {hyper_parameters}\n"
@@ -211,10 +300,8 @@ def train_and_evaluate_classifier(
         file.write(f"{classification_report(y_test, predictions)}\n")
         file.write(f"D)\n")
         file.write(f"Accuracy: {accuracy:.2f}\n")
-        file.write(f"Macro Average F1: {class_report['macro avg']['f1-score']:.2f}\n")
-        file.write(
-            f"Weighted Average F1: {class_report['weighted avg']['f1-score']:.2f}\n"
-        )
+        file.write(f"Macro Average F1: {macro_f1:.2f}\n")
+        file.write(f"Weighted Average F1: {weighted_f1:.2f}\n")
         file.write("**************************************************\n\n")
 
 
@@ -245,6 +332,56 @@ def perform_grid_search(X_train, y_train):
         print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
 
     return clf.best_estimator_
+
+
+def perform_grid_search_Top_DT(X_train, y_train, category):
+    global best_param_TOP_DT
+    # Define the parameter grid to search
+    parameter_space = {
+        "criterion": ["gini", "entropy"],
+        "max_depth": [None, 5, 10],
+        "min_samples_split": [2, 4, 6],
+    }
+
+    scoring_function = "accuracy"
+    # Create MLP classifier instance
+    dt_classifier = tree.DecisionTreeClassifier(random_state=42)
+
+    # Create GridSearchCV instance
+    grid_search = GridSearchCV(
+        dt_classifier, parameter_space, scoring=scoring_function, cv=5
+    )
+    grid_search.fit(X_train, y_train)
+    best_classifier = grid_search.best_estimator_
+
+    # Best parameter set
+    print("Best parameters found using TOP_MLP:\n", grid_search.best_params_)
+    best_param_TOP_DT = grid_search.best_params_
+
+    # All results
+    means = grid_search.cv_results_["mean_test_score"]
+    stds = grid_search.cv_results_["std_test_score"]
+    for mean, std, params in zip(means, stds, grid_search.cv_results_["params"]):
+        print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
+
+        # Visualizing the tree - limited to depth for clearer visualization
+    feature_names = X_train.columns.tolist()
+    class_names = (
+        y_train.unique().tolist()
+    )  # Replace 'y_train' with your target series for the classes' names
+    plt.figure(figsize=(20, 10))  # Set figure size for better readability
+    tree.plot_tree(
+        best_classifier,
+        filled=True,
+        rounded=True,
+        feature_names=feature_names,
+        class_names=class_names,
+        max_depth=3,
+    )  # Limit depth to 3 for visualization, remove to visualize the full tree
+    plt.savefig(f"{category}_decision_tree_Top_DT.png")  # Save the figure to a file
+    # plt.show()  # Display the figure inline
+
+    return best_classifier
 
 
 ##############################################################################################################

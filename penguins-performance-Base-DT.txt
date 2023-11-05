@@ -1,0 +1,69 @@
+A) --- penguins_Base-DT --- Hyper-Parameters: best_param_BASE_MLP
+B) Confusion Matrix:
+[[38  1  0]
+ [ 0 18  0]
+ [ 0  0 27]]
+
+C) Classification Report:
+              precision    recall  f1-score   support
+
+      Adelie       1.00      0.97      0.99        39
+   Chinstrap       0.95      1.00      0.97        18
+      Gentoo       1.00      1.00      1.00        27
+
+    accuracy                           0.99        84
+   macro avg       0.98      0.99      0.99        84
+weighted avg       0.99      0.99      0.99        84
+
+D)
+Accuracy: 0.99
+Macro Average F1: 0.99
+Weighted Average F1: 0.99
+**************************************************
+
+A) --- penguins_Base-DT --- Hyper-Parameters: best_param_BASE_MLP
+B) Confusion Matrix:
+[[36  3  0]
+ [ 0 17  0]
+ [ 1  0 27]]
+
+C) Classification Report:
+              precision    recall  f1-score   support
+
+      Adelie       0.97      0.92      0.95        39
+   Chinstrap       0.85      1.00      0.92        17
+      Gentoo       1.00      0.96      0.98        28
+
+    accuracy                           0.95        84
+   macro avg       0.94      0.96      0.95        84
+weighted avg       0.96      0.95      0.95        84
+
+D)
+Accuracy: 0.95
+Macro Average F1: 0.95
+Weighted Average F1: 0.95
+**************************************************
+
+A) --- penguins_Base-DT --- Hyper-Parameters: best_param_BASE_MLP
+B) Confusion Matrix:
+[[34  1  0]
+ [ 1 10  0]
+ [ 0  0 38]]
+
+C) Classification Report:
+              precision    recall  f1-score   support
+
+      Adelie       0.97      0.97      0.97        35
+   Chinstrap       0.91      0.91      0.91        11
+      Gentoo       1.00      1.00      1.00        38
+
+    accuracy                           0.98        84
+   macro avg       0.96      0.96      0.96        84
+weighted avg       0.98      0.98      0.98        84
+
+D)
+Accuracy: 0.98
+Macro Average F1: 0.96
+Weighted Average F1: 0.98
+**************************************************
+

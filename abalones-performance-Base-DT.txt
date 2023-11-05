@@ -1,0 +1,69 @@
+A) --- abalones_Base-DT --- Hyper-Parameters: best_param_BASE_MLP
+B) Confusion Matrix:
+[[121  53 150]
+ [ 47 224  63]
+ [144  65 178]]
+
+C) Classification Report:
+              precision    recall  f1-score   support
+
+           F       0.39      0.37      0.38       324
+           I       0.65      0.67      0.66       334
+           M       0.46      0.46      0.46       387
+
+    accuracy                           0.50      1045
+   macro avg       0.50      0.50      0.50      1045
+weighted avg       0.50      0.50      0.50      1045
+
+D)
+Accuracy: 0.50
+Macro Average F1: 0.50
+Weighted Average F1: 0.50
+**************************************************
+
+A) --- abalones_Base-DT --- Hyper-Parameters: best_param_BASE_MLP
+B) Confusion Matrix:
+[[132  64 130]
+ [ 43 216  84]
+ [127  80 169]]
+
+C) Classification Report:
+              precision    recall  f1-score   support
+
+           F       0.44      0.40      0.42       326
+           I       0.60      0.63      0.61       343
+           M       0.44      0.45      0.45       376
+
+    accuracy                           0.49      1045
+   macro avg       0.49      0.49      0.49      1045
+weighted avg       0.49      0.49      0.49      1045
+
+D)
+Accuracy: 0.49
+Macro Average F1: 0.49
+Weighted Average F1: 0.49
+**************************************************
+
+A) --- abalones_Base-DT --- Hyper-Parameters: best_param_BASE_MLP
+B) Confusion Matrix:
+[[126  36 135]
+ [ 52 240  82]
+ [135  69 170]]
+
+C) Classification Report:
+              precision    recall  f1-score   support
+
+           F       0.40      0.42      0.41       297
+           I       0.70      0.64      0.67       374
+           M       0.44      0.45      0.45       374
+
+    accuracy                           0.51      1045
+   macro avg       0.51      0.51      0.51      1045
+weighted avg       0.52      0.51      0.52      1045
+
+D)
+Accuracy: 0.51
+Macro Average F1: 0.51
+Weighted Average F1: 0.52
+**************************************************
+
