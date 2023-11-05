@@ -78,7 +78,7 @@ def main():
         rounded=True,
     )
     graph = graphviz.Source(dot_data)
-    # graph.render("mytree")
+    graph.render("mytree")
 
     # 4C: Train and evaluate the base MLP classifier
     base_mlp = MLPClassifier(
@@ -202,11 +202,14 @@ def train_and_evaluate_classifier(
     accuracy = accuracy_score(y_test, predictions)
 
     with open(f"{category}-performance-{classifier_name}.txt", "a") as file:
-        file.write(f"--- {classifier_name} --- Hyper-Parameters: {hyper_parameters}\n")
-        file.write("Confusion Matrix:\n")
+        file.write(
+            f"A) --- {category}_{classifier_name} --- Hyper-Parameters: {hyper_parameters}\n"
+        )
+        file.write("B) Confusion Matrix:\n")
         file.write(f"{conf_matrix}\n\n")
-        file.write("Classification Report:\n")
+        file.write("C) Classification Report:\n")
         file.write(f"{classification_report(y_test, predictions)}\n")
+        file.write(f"D)\n")
         file.write(f"Accuracy: {accuracy:.2f}\n")
         file.write(f"Macro Average F1: {class_report['macro avg']['f1-score']:.2f}\n")
         file.write(
