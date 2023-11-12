@@ -3,9 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import imageio
 import math
+import os
 from sklearn.model_selection import train_test_split
 from sklearn import tree
-import graphviz
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import (
     confusion_matrix,
@@ -49,13 +49,18 @@ def main():
 
     # POINT 3 OF ASSIGNMENT INSTRUCTIONS
     # Switch between the two lines below depending if you want dummy-data or self-categorized data for Penguins
+    # (
+    #     X_penguins_train,
+    #     X_penguins_test,
+    #     y_penguins_train,
+    #     y_penguins_test,
+    # ) = train_test_split(penguin_dummy_num_attributes, penguins.iloc[:, 0])
     (
-        X_penguins_train,
-        X_penguins_test,
-        y_penguins_train,
-        y_penguins_test,
-    ) = train_test_split(penguin_dummy_num_attributes, penguins.iloc[:, 0])
-    # X_penguins_train, X_penguins_test, y_penguins_train, y_penguins_test = train_test_split(penguin_num_attributes, penguins.iloc[:, 0])
+        X_penguins_train, 
+        X_penguins_test, 
+        y_penguins_train, 
+        y_penguins_test
+    ) = train_test_split(penguin_num_attributes, penguins.iloc[:, 0])
     (
         X_abalones_train,
         X_abalones_test,
@@ -63,39 +68,29 @@ def main():
         y_abalones_test,
     ) = train_test_split(abalone_num_attributes, abalones.iloc[:, 0])
 
-    # print(f"PENGUINS:X_train={X_penguins_train.shape}; X_test={X_penguins_test.shape}; y_train={y_penguins_train.shape}; y_test={y_penguins_test.shape};\n")
-    # print(f"ABALONES:X_train={X_abalones_train.shape}; X_test={X_abalones_test.shape}; y_train={y_abalones_train.shape}; y_test={y_abalones_test.shape};\n")
+    # Deleting outdated files that will be generated
+    penguins_output = "penguin-performance.txt"
+    abalones_output = "abalone-performance.txt"
+    if os.path.exists(penguins_output):
+        os.remove(penguins_output)
+    if os.path.exists(abalones_output):
+        os.remove(abalones_output)
 
-    # DECIDE ON FEATURES
     # 4A: Train and evaluate the base DT
     dtc_penguins = tree.DecisionTreeClassifier(criterion="entropy")
     dtc_penguins.fit(X_penguins_train, y_penguins_train)
-    dot_data = tree.export_graphviz(
-        dtc_penguins,
-        out_file=None,
-        feature_names=penguin_dummy_num_attributes.keys(),
-        class_names=penguins.iloc[:, 0].unique(),
-        filled=True,
-        rounded=True,
-    )
-    graph = graphviz.Source(dot_data)
-    # graph.render("mytree")
 
-    # POINT 4A: Train the Base-DT for the Penguin dataset
-    dtc_penguins_1 = tree.DecisionTreeClassifier(criterion="entropy")
-    dtc_penguins_1.fit(X_penguins_train, y_penguins_train)
-
-    # Visualizing the tree - limited to depth for clearer visualization
+    # Visualizing the tree - limited
     plt.figure(figsize=(20, 10))  # Set figure size for better readability
     tree.plot_tree(
-        dtc_penguins_1,
+        dtc_penguins,
         filled=True,
         rounded=True,
         feature_names=penguin_num_attributes.columns,
+        #feature_names=penguin_dummy_num_attributes.columns,
         class_names=penguins.iloc[:, 0].unique(),
-    )  # Limit depth to 3 for visualization, remove to visualize the full tree
+    )
     plt.savefig("penguins_decision_tree.png")  # Save the figure to a file
-    # plt.show()  # Display the figure inline
 
     # 4A: Train the Base-DT for the Abalones dataset
     dtc_abalones = tree.DecisionTreeClassifier(criterion="entropy")
@@ -110,9 +105,8 @@ def main():
         feature_names=abalone_num_attributes.columns,
         class_names=abalones.iloc[:, 0].unique(),
         max_depth=3,
-    )  # Limit depth to 3 for visualization, remove to visualize the full tree
+    )  # Limited depth to 3 for visualization, remove to visualize the full tree
     plt.savefig("abalone_decision_tree.png")  # Save the figure to a file
-    # plt.show()  # Display the figure inline
 
     # 4A: Train the Base-DT for the Penguins dataset
     train_and_evaluate_classifier(
@@ -120,10 +114,11 @@ def main():
         X_penguins_test,
         y_penguins_train,
         y_penguins_test,
-        dtc_penguins_1,
+        dtc_penguins,
         "Base-DT",
         "penguins",
-        "best_param_BASE_MLP",
+        "Default parameters",
+        penguins_output
     )
     # 4A: Train the Base-DT for the Abalones dataset
     train_and_evaluate_classifier(
@@ -134,7 +129,8 @@ def main():
         dtc_abalones,
         "Base-DT",
         "abalones",
-        "best_param_BASE_MLP",
+        "Default parameters",
+        abalones_output
     )
 
     # 4B: Train the Base-DT for the Penguins dataset
@@ -150,7 +146,9 @@ def main():
         "Top-DT",
         "penguins",
         best_param_TOP_DT,
+        penguins_output
     )
+
     # 4B: Train the Base-DT for the Abalones dataset
     top_DT_abalones = perform_grid_search_Top_DT(
         X_abalones_train, y_abalones_train, "abalones"
@@ -164,6 +162,7 @@ def main():
         "Top-DT",
         "abalones",
         best_param_TOP_DT,
+        abalones_output
     )
 
     # 4C: Train and evaluate the base MLP classifier
@@ -179,7 +178,8 @@ def main():
         base_mlp,
         "Base-MLP",
         "abalones",
-        "best_param_BASE_MLP",
+        "Default parameters",
+        abalones_output
     )
 
     train_and_evaluate_classifier(
@@ -190,7 +190,8 @@ def main():
         base_mlp,
         "Base-MLP",
         "penguins",
-        "best_param_BASE_MLP",
+        "Default parameters",
+        penguins_output
     )
 
     # 4D: Perform grid search to find the top MLP
@@ -205,6 +206,7 @@ def main():
         "Top-MLP",
         "penguins",
         best_param_TOP_MLP,
+        penguins_output
     )
 
     # 4D: Perform grid search to find the top MLP
@@ -219,7 +221,88 @@ def main():
         "Top-MLP",
         "abalones",
         best_param_TOP_MLP,
+        abalones_output
     )
+
+    with open(penguins_output, "a") as file:
+        file.write(
+            f"\n------------------------------------ PART 6 ------------------------------------\n"
+        )
+    with open(abalones_output, "a") as file:
+        file.write(
+            f"\n------------------------------------ PART 6 ------------------------------------\n"
+        )
+    # 6A
+    get_variance(X_penguins_train,
+        X_penguins_test,
+        y_penguins_train,
+        y_penguins_test,
+        dtc_penguins,
+        "Base-DT",
+        "penguins",
+        penguins_output)
+    get_variance(X_abalones_train,
+        X_abalones_test,
+        y_abalones_train,
+        y_abalones_test,
+        dtc_abalones,
+        "Base-DT",
+        "abalones",
+        abalones_output)
+
+    # 6B
+    get_variance(X_penguins_train,
+        X_penguins_test,
+        y_penguins_train,
+        y_penguins_test,
+        top_DT_Penguins,
+        "Top-DT",
+        "penguins",
+        penguins_output)
+    get_variance(X_abalones_train,
+        X_abalones_test,
+        y_abalones_train,
+        y_abalones_test,
+        top_DT_abalones,
+        "Top-DT",
+        "abalones",
+        abalones_output)
+
+    # 6C
+    get_variance(X_penguins_train,
+        X_penguins_test,
+        y_penguins_train,
+        y_penguins_test,
+        base_mlp,
+        "Base-MLP",
+        "penguins",
+        penguins_output)
+    get_variance(X_abalones_train,
+        X_abalones_test,
+        y_abalones_train,
+        y_abalones_test,
+        base_mlp,
+        "Base-MLP",
+        "abalones",
+        abalones_output)
+
+    # 6D
+    get_variance(X_penguins_train,
+        X_penguins_test,
+        y_penguins_train,
+        y_penguins_test,
+        top_mlp_Penguins,
+        "Top-MLP",
+        "penguins",
+        penguins_output)
+    get_variance(X_abalones_train,
+        X_abalones_test,
+        y_abalones_train,
+        y_abalones_test,
+        top_mlp_Abalones,
+        "Top-MLP",
+        "abalones",
+        abalones_output)
 
 
 def save_graphic(df: pd.DataFrame, type):
@@ -248,25 +331,6 @@ def save_graphic(df: pd.DataFrame, type):
     plt.close(fig)
     return output_percent
 
-
-# NOT NEEDED scikit-learn does it for us
-# h_penguins = 0
-# h_abalones = 0
-# for nbr in penguins_output_percent:
-#     h_penguins += -((nbr/100)*math.log2(nbr/100))
-# for nbr in abalones_output_percent:
-#     h_abalones += -((nbr/100)*math.log2(nbr/100))
-def get_best_gain(df: pd.DataFrame, h):
-    output_key = df.keys()[0]
-    info_gains = []
-    for key in df.keys():
-        inter_df = df.get([output_key, key])
-        h_key = 0
-        for value in df[key].unique():
-            h_key += 0
-        info_gains.append(h - h_key)
-
-
 def train_and_evaluate_classifier(
     X_train,
     X_test,
@@ -276,21 +340,12 @@ def train_and_evaluate_classifier(
     classifier_name,
     category,
     hyper_parameters,
+    path
 ):
-    classifier.fit(X_train, y_train)
-
-    predictions = classifier.predict(X_test)
-
+    (accuracy, macro_f1, weighted_f1, predictions) = get_stats(X_train, X_test, y_train, y_test, classifier)
     conf_matrix = confusion_matrix(y_test, predictions)
 
-    class_report = classification_report(y_test, predictions, output_dict=True)
-
-    accuracy = accuracy_score(y_test, predictions)
-
-    macro_f1 = class_report["macro avg"]["f1-score"]
-    weighted_f1 = class_report["weighted avg"]["f1-score"]
-
-    with open(f"{category}-performance-{classifier_name}.txt", "a") as file:
+    with open(path, "a") as file:
         file.write(
             f"A) --- {category}_{classifier_name} --- Hyper-Parameters: {hyper_parameters}\n"
         )
@@ -304,6 +359,61 @@ def train_and_evaluate_classifier(
         file.write(f"Weighted Average F1: {weighted_f1:.2f}\n")
         file.write("**************************************************\n\n")
 
+def get_stats(X_train, X_test, y_train, y_test, classifier):
+    classifier.fit(X_train, y_train)
+
+    predictions = classifier.predict(X_test)
+
+    class_report = classification_report(y_test, predictions, output_dict=True)
+
+    accuracy = accuracy_score(y_test, predictions)
+
+    macro_f1 = class_report["macro avg"]["f1-score"]
+    weighted_f1 = class_report["weighted avg"]["f1-score"]
+
+    return (accuracy, macro_f1, weighted_f1, predictions)
+
+def get_variance(X_train, X_test, y_train, y_test, classifier,classifier_name, category, path):
+    accuracies = []
+    macro_f1s = []
+    weighted_f1s = []
+    averages = []
+    variances = []
+    for i in range(5):
+        (accuracy, macro_f1, weighted_f1, predictions) = get_stats(X_train, X_test, y_train, y_test, classifier)
+        accuracies.append(accuracy)
+        macro_f1s.append(macro_f1)
+        weighted_f1s.append(weighted_f1)
+
+    averages.append(sum(accuracies)/len(accuracies))
+    averages.append(sum(macro_f1s)/len(macro_f1s))
+    averages.append(sum(weighted_f1s)/len(weighted_f1s))
+    temp_sum = 0.0
+    for a in accuracies:
+        temp_sum += (a-averages[0])**2
+    variances.append(100*temp_sum/len(accuracies))
+    temp_sum = 0.0
+    for f in macro_f1s:
+        temp_sum += (a-averages[1])**2
+    variances.append(100*temp_sum/len(macro_f1s))
+    temp_sum = 0.0
+    for f in weighted_f1s:
+        temp_sum += (a-averages[2])**2
+    variances.append(100*temp_sum/len(weighted_f1s))
+
+    with open(path, "a") as file:
+        file.write(
+            f"--- {category}_{classifier_name} ---\n"
+        )
+        file.write("A) Accuracy:\n")
+        file.write(f"Average = {averages[0]};\tVariance = {variances[0]} %\t Std = {math.sqrt(variances[0])} %\n\n")
+        file.write("B) Macro Average F1:\n")
+        file.write(f"Average = {averages[1]};\tVariance = {variances[1]} %\t Std = {math.sqrt(variances[1])} %\n\n")
+        file.write(f"C) Weighted Average F1\n")
+        file.write(f"Average = {averages[2]};\tVariance = {variances[2]} %\t Std = {math.sqrt(variances[2])} %\n\n")
+        file.write("**************************************************\n\n")
+
+    
 
 def perform_grid_search(X_train, y_train):
     global best_param_TOP_MLP
@@ -328,8 +438,8 @@ def perform_grid_search(X_train, y_train):
     # All results
     means = clf.cv_results_["mean_test_score"]
     stds = clf.cv_results_["std_test_score"]
-    for mean, std, params in zip(means, stds, clf.cv_results_["params"]):
-        print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
+    #for mean, std, params in zip(means, stds, clf.cv_results_["params"]):
+        #print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
 
     return clf.best_estimator_
 
@@ -361,8 +471,8 @@ def perform_grid_search_Top_DT(X_train, y_train, category):
     # All results
     means = grid_search.cv_results_["mean_test_score"]
     stds = grid_search.cv_results_["std_test_score"]
-    for mean, std, params in zip(means, stds, grid_search.cv_results_["params"]):
-        print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
+    # for mean, std, params in zip(means, stds, grid_search.cv_results_["params"]):
+    #     print("%0.3f (+/-%0.03f) for %r" % (mean, std * 2, params))
 
         # Visualizing the tree - limited to depth for clearer visualization
     feature_names = X_train.columns.tolist()
